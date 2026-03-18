@@ -13,8 +13,8 @@ const (
 )
 
 type Config struct {
-	Token         string `json:"token,omitempty"`
-	APIEndpoint   string `json:"api_endpoint,omitempty"`
+	Token          string `json:"token,omitempty"`
+	APIEndpoint    string `json:"api_endpoint,omitempty"`
 	SigningBaseURL string `json:"signing_base_url,omitempty"`
 }
 
@@ -44,7 +44,7 @@ func loadConfigFromPath(path string) *Config {
 
 func defaultConfig() *Config {
 	return &Config{
-		APIEndpoint:   DefaultAPIEndpoint,
+		APIEndpoint:    DefaultAPIEndpoint,
 		SigningBaseURL: DefaultSigningURL,
 	}
 }
