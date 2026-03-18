@@ -8,7 +8,7 @@ import (
 
 const (
 	DefaultAPIEndpoint = "https://1click.chaindefuser.com"
-	DefaultSigningURL  = "https://swap.flipsidecrypto.xyz"
+	DefaultSigningURL  = "https://swap.flipside.chat"
 	ConfigFileName     = ".near-intents.json"
 )
 
