@@ -7,7 +7,7 @@ You have access to `near-intents`, a CLI for cross-chain token swaps via the NEA
 Authentication is via JWT bearer token, obtained from the Partner Dashboard at https://partners.near-intents.org/
 
 Set your token (pick one):
-- Flag: `near-intents --token <jwt> <command>`
+- Flag: `near-intents --jwt <token> <command>`
 - Environment variable: `NEAR_INTENTS_JWT_TOKEN=<jwt>`
 - Config file: `~/.near-intents.json` → `{"token": "<jwt>"}`
 

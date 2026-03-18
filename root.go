@@ -23,7 +23,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&flagToken, "token", "", "JWT bearer token for authentication")
+	rootCmd.PersistentFlags().StringVar(&flagToken, "jwt", "", "JWT bearer token for authentication")
 	rootCmd.PersistentFlags().BoolVar(&flagPretty, "pretty", false, "Pretty-print JSON output with indentation")
 	rootCmd.PersistentFlags().BoolVar(&flagVerbose, "verbose", false, "Verbose logging to stderr")
 	rootCmd.SetVersionTemplate(fmt.Sprintf("near-intents %s (commit: %s, built: %s)\n", version, commit, date))

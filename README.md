@@ -30,7 +30,7 @@ export NEAR_INTENTS_JWT_TOKEN=<jwt>
 echo '{"token": "<jwt>"}' > ~/.near-intents.json
 
 # Flag (per-command)
-near-intents --token <jwt> tokens
+near-intents --jwt <token> tokens
 ```
 
 Without a token, everything still works — swaps just incur a platform fee.

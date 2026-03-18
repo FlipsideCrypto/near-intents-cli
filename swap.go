@@ -70,7 +70,7 @@ func runSwap(cmd *cobra.Command, args []string) error {
 			DepositAddress: *resp.Quote.DepositAddress,
 			Amount:         flagAmount,
 			Token:          fromToken.Symbol,
-			Decimals:       int(fromToken.Decimals),
+			Decimals:       fromToken.Decimals,
 			TokenAddress:   contractAddr,
 			AmountUsd:      resp.Quote.AmountInUsd,
 		})

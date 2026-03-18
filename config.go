@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -32,7 +33,10 @@ func loadConfigFromPath(path string) *Config {
 		return defaultConfig()
 	}
 	cfg := defaultConfig()
-	json.Unmarshal(data, cfg)
+	if err := json.Unmarshal(data, cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not parse %s: %v (using defaults)\n", path, err)
+		return defaultConfig()
+	}
 	if cfg.APIEndpoint == "" {
 		cfg.APIEndpoint = DefaultAPIEndpoint
 	}

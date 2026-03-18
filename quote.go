@@ -73,9 +73,9 @@ func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*Quote
 	}
 
 	// Convert amount using appropriate token decimals
-	decimals := int(fromToken.Decimals)
+	decimals := fromToken.Decimals
 	if flagSwapType == "EXACT_OUTPUT" {
-		decimals = int(toToken.Decimals)
+		decimals = toToken.Decimals
 	}
 	amountRaw, err := convertAmount(flagAmount, decimals)
 	if err != nil {
@@ -97,7 +97,7 @@ func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*Quote
 	req := &QuoteRequest{
 		Dry:               dry,
 		SwapType:          flagSwapType,
-		SlippageTolerance: float32(flagSlippage),
+		SlippageTolerance: flagSlippage,
 		OriginAsset:       fromToken.AssetId,
 		DestinationAsset:  toToken.AssetId,
 		Amount:            amountRaw,

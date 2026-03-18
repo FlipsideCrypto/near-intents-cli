@@ -86,7 +86,7 @@ func (c *Client) doRequest(method, path string, body any) ([]byte, error) {
 
 type TokenResponse struct {
 	AssetId         string  `json:"assetId"`
-	Decimals        float32 `json:"decimals"`
+	Decimals        int     `json:"decimals"`
 	Blockchain      string  `json:"blockchain"`
 	Symbol          string  `json:"symbol"`
 	Price           float32 `json:"price"`
@@ -97,7 +97,7 @@ type TokenResponse struct {
 type QuoteRequest struct {
 	Dry               bool      `json:"dry"`
 	SwapType          string    `json:"swapType"`
-	SlippageTolerance float32   `json:"slippageTolerance"`
+	SlippageTolerance int       `json:"slippageTolerance"`
 	OriginAsset       string    `json:"originAsset"`
 	DestinationAsset  string    `json:"destinationAsset"`
 	Amount            string    `json:"amount"`
