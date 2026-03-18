@@ -3,7 +3,6 @@ package main
 import (
 	"time"
 
-	oneclick "github.com/defuse-protocol/one-click-sdk-go"
 	"github.com/spf13/cobra"
 )
 
@@ -55,10 +54,10 @@ func addQuoteFlags(cmd *cobra.Command) {
 	cmd.MarkFlagRequired("amount")
 }
 
-func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*oneclick.QuoteRequest, []oneclick.TokenResponse, error) {
+func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*QuoteRequest, []TokenResponse, error) {
 	// Fetch tokens for resolution
 	verbose("fetching token list for resolution")
-	tokens, _, err := client.api.OneClickAPI.GetTokens(client.ctx()).Execute()
+	tokens, err := client.GetTokens()
 	if err != nil {
 		return nil, nil, &ResolveError{Code: "API_ERROR", Message: "Failed to fetch tokens: " + err.Error()}
 	}
@@ -95,7 +94,7 @@ func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*onecl
 		}
 	}
 
-	req := &oneclick.QuoteRequest{
+	req := &QuoteRequest{
 		Dry:               dry,
 		SwapType:          flagSwapType,
 		SlippageTolerance: float32(flagSlippage),
@@ -112,7 +111,7 @@ func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*onecl
 
 	// App fees
 	if flagAppFee > 0 && flagFeeRecip != "" {
-		req.AppFees = []oneclick.AppFee{
+		req.AppFees = []AppFee{
 			{Recipient: flagFeeRecip, Fee: float32(flagAppFee)},
 		}
 	}
@@ -135,7 +134,7 @@ func runQuote(cmd *cobra.Command, args []string) error {
 	}
 
 	verbose("requesting dry quote")
-	resp, _, err := client.api.OneClickAPI.GetQuote(client.ctx()).QuoteRequest(*req).Execute()
+	resp, err := client.PostQuote(req)
 	if err != nil {
 		PrintErrorResponse("QUOTE_FAILED", "Quote request failed: "+err.Error())
 		return nil

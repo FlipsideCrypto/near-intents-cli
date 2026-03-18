@@ -1,7 +1,6 @@
 package main
 
 import (
-	oneclick "github.com/defuse-protocol/one-click-sdk-go"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +37,7 @@ func runSubmitTx(cmd *cobra.Command, args []string) error {
 	cfg := loadConfig()
 	client := newClient(cfg)
 
-	req := oneclick.SubmitDepositTxRequest{
+	req := SubmitDepositTxRequest{
 		TxHash:         submitTxHash,
 		DepositAddress: submitDepositAddr,
 	}
@@ -50,7 +49,7 @@ func runSubmitTx(cmd *cobra.Command, args []string) error {
 	}
 
 	verbose("submitting deposit tx %s for %s", submitTxHash, submitDepositAddr)
-	resp, _, err := client.api.OneClickAPI.SubmitDepositTx(client.ctx()).SubmitDepositTxRequest(req).Execute()
+	resp, err := client.SubmitDepositTx(&req)
 	if err != nil {
 		PrintErrorResponse("API_ERROR", "Failed to submit deposit tx: "+err.Error())
 		return nil

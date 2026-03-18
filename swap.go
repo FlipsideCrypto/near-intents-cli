@@ -49,7 +49,7 @@ func runSwap(cmd *cobra.Command, args []string) error {
 	}
 
 	verbose("requesting swap quote (dry=false)")
-	resp, _, err := client.api.OneClickAPI.GetQuote(client.ctx()).QuoteRequest(*req).Execute()
+	resp, err := client.PostQuote(req)
 	if err != nil {
 		PrintErrorResponse("SWAP_FAILED", "Swap request failed: "+err.Error())
 		return nil
@@ -92,7 +92,7 @@ func runSwap(cmd *cobra.Command, args []string) error {
 		"signingUrl":         signingURL,
 	}
 	if resp.Quote.Deadline != nil {
-		result["deadline"] = resp.Quote.Deadline.Format(time.RFC3339)
+		result["deadline"] = *resp.Quote.Deadline
 	}
 	if resp.Quote.DepositMemo != nil {
 		result["depositMemo"] = *resp.Quote.DepositMemo

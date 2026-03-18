@@ -8,7 +8,7 @@ import (
 func TestBuildSigningURL(t *testing.T) {
 	u := buildSigningURL(SigningParams{
 		BaseURL:        "https://swap.example.com",
-		Chain:          "ethereum",
+		Chain:          "eth",
 		DepositAddress: "0xabc123",
 		Amount:         "1.5",
 		Token:          "USDC",
@@ -38,7 +38,7 @@ func TestBuildSigningURL(t *testing.T) {
 func TestBuildSigningURLNative(t *testing.T) {
 	u := buildSigningURL(SigningParams{
 		BaseURL:        "https://swap.example.com",
-		Chain:          "ethereum",
+		Chain:          "eth",
 		DepositAddress: "0xabc123",
 		Amount:         "1.0",
 		Token:          "ETH",
@@ -56,7 +56,7 @@ func TestBuildSigningURLNative(t *testing.T) {
 func TestBuildSigningURLSolana(t *testing.T) {
 	u := buildSigningURL(SigningParams{
 		BaseURL:        "https://swap.example.com",
-		Chain:          "solana",
+		Chain:          "sol",
 		DepositAddress: "So111...",
 		Amount:         "1.0",
 		Token:          "SOL",

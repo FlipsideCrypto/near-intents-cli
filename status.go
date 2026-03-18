@@ -35,12 +35,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	client := newClient(cfg)
 
 	verbose("checking status for %s", statusDepositAddr)
-	apiCall := client.api.OneClickAPI.GetExecutionStatus(client.ctx()).DepositAddress(statusDepositAddr)
-	if statusDepositMemo != "" {
-		apiCall = apiCall.DepositMemo(statusDepositMemo)
-	}
-
-	resp, _, err := apiCall.Execute()
+	resp, err := client.GetExecutionStatus(statusDepositAddr, statusDepositMemo)
 	if err != nil {
 		PrintErrorResponse("API_ERROR", "Failed to get status: "+err.Error())
 		return nil
@@ -49,7 +44,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	result := map[string]interface{}{
 		"correlationId": resp.CorrelationId,
 		"status":        resp.Status,
-		"updatedAt":     resp.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		"updatedAt":     resp.UpdatedAt,
 	}
 
 	// Include swap details when available

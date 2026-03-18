@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-
-	oneclick "github.com/defuse-protocol/one-click-sdk-go"
 )
 
 type ResolveError struct {
@@ -20,7 +18,7 @@ func (e *ResolveError) Error() string {
 // resolveTokenByIdOrSymbol resolves a token identifier to a TokenResponse.
 // If identifier looks like an asset ID (contains ":"), match exactly.
 // Otherwise treat as symbol and require chain for disambiguation.
-func resolveTokenByIdOrSymbol(identifier, chain string, tokens []oneclick.TokenResponse) (*oneclick.TokenResponse, error) {
+func resolveTokenByIdOrSymbol(identifier, chain string, tokens []TokenResponse) (*TokenResponse, error) {
 	// Asset ID mode: exact match
 	if strings.Contains(identifier, ":") {
 		for i, t := range tokens {

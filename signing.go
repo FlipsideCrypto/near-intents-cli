@@ -5,14 +5,17 @@ import (
 	"net/url"
 )
 
+// evmChainIDs maps the API's blockchain short names to EVM chain IDs.
+// The API uses short names (eth, arb, base, etc.) not full names.
 var evmChainIDs = map[string]int{
-	"ethereum":  1,
+	"eth":       1,
 	"base":      8453,
-	"arbitrum":  42161,
-	"polygon":   137,
+	"arb":       42161,
+	"pol":       137,
 	"avalanche": 43114,
-	"optimism":  10,
+	"op":        10,
 	"bsc":       56,
+	"gnosis":    100,
 }
 
 func mapChainToSigningChain(blockchain string) string {
@@ -20,7 +23,7 @@ func mapChainToSigningChain(blockchain string) string {
 		return "evm"
 	}
 	switch blockchain {
-	case "solana":
+	case "sol":
 		return "solana"
 	case "near":
 		return "near"

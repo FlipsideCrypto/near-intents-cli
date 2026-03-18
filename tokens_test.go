@@ -2,14 +2,12 @@ package main
 
 import (
 	"testing"
-
-	oneclick "github.com/defuse-protocol/one-click-sdk-go"
 )
 
 func ptr(s string) *string { return &s }
 
-func makeTokens() []oneclick.TokenResponse {
-	return []oneclick.TokenResponse{
+func makeTokens() []TokenResponse {
+	return []TokenResponse{
 		{AssetId: "nep141:wrap.near", Symbol: "wNEAR", Blockchain: "near", Decimals: 24, Price: 3.5},
 		{AssetId: "nep141:eth-0xa0b8.omft.near", Symbol: "USDC", Blockchain: "ethereum", Decimals: 6, Price: 1.0, ContractAddress: ptr("0xa0b8")},
 		{AssetId: "nep141:sol-EPjF.omft.near", Symbol: "USDC", Blockchain: "solana", Decimals: 6, Price: 1.0, ContractAddress: ptr("EPjF")},

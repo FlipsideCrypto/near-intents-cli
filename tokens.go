@@ -3,7 +3,6 @@ package main
 import (
 	"strings"
 
-	oneclick "github.com/defuse-protocol/one-click-sdk-go"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +36,7 @@ func runTokens(cmd *cobra.Command, args []string) error {
 	client := newClient(cfg)
 
 	verbose("fetching tokens from %s", cfg.APIEndpoint)
-	tokens, _, err := client.api.OneClickAPI.GetTokens(client.ctx()).Execute()
+	tokens, err := client.GetTokens()
 	if err != nil {
 		PrintErrorResponse("API_ERROR", "Failed to fetch tokens: "+err.Error())
 		return nil
@@ -64,7 +63,7 @@ func runTokens(cmd *cobra.Command, args []string) error {
 			Blockchain:      t.Blockchain,
 			Decimals:        int(t.Decimals),
 			Price:           t.Price,
-			PriceUpdatedAt:  t.PriceUpdatedAt.Format("2006-01-02T15:04:05Z"),
+			PriceUpdatedAt:  t.PriceUpdatedAt,
 			ContractAddress: t.ContractAddress,
 		}
 	}
@@ -72,7 +71,7 @@ func runTokens(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func filterTokens(tokens []oneclick.TokenResponse, chain, search string) []oneclick.TokenResponse {
+func filterTokens(tokens []TokenResponse, chain, search string) []TokenResponse {
 	if chain == "" && search == "" {
 		return tokens
 	}
@@ -80,7 +79,7 @@ func filterTokens(tokens []oneclick.TokenResponse, chain, search string) []onecl
 	chain = strings.ToLower(chain)
 	search = strings.ToLower(search)
 
-	var result []oneclick.TokenResponse
+	var result []TokenResponse
 	for _, t := range tokens {
 		if chain != "" && strings.ToLower(t.Blockchain) != chain {
 			continue
