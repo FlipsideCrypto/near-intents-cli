@@ -87,10 +87,10 @@ func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*Quote
 	refundTo := flagRefundTo
 	if dry {
 		if recipient == "" {
-			recipient = "placeholder.near"
+			recipient = placeholderAddress(toToken.Blockchain)
 		}
 		if refundTo == "" {
-			refundTo = "placeholder.near"
+			refundTo = placeholderAddress(fromToken.Blockchain)
 		}
 	}
 

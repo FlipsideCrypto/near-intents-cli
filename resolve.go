@@ -62,6 +62,23 @@ func resolveTokenByIdOrSymbol(identifier, chain string, tokens []TokenResponse) 
 	return &tokens[matches[0]], nil
 }
 
+// placeholderAddress returns a valid-looking placeholder address for a given
+// blockchain. Used for dry quotes where recipient/refund addresses are required
+// by the API but not acted upon.
+func placeholderAddress(blockchain string) string {
+	if _, ok := evmChainIDs[blockchain]; ok {
+		return "0x0000000000000000000000000000000000000000"
+	}
+	switch blockchain {
+	case "near":
+		return "placeholder.near"
+	case "sol":
+		return "11111111111111111111111111111111"
+	default:
+		return "placeholder"
+	}
+}
+
 // convertAmount converts a human-readable amount (e.g., "1.5") to smallest
 // units string given the token's decimal places.
 func convertAmount(amount string, decimals int) (string, error) {
