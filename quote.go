@@ -18,6 +18,8 @@ var (
 	flagRefundTo  string
 	flagAppFee    int
 	flagFeeRecip  string
+	flagNative    bool
+	flagSender    string
 )
 
 var quoteCmd = &cobra.Command{
@@ -49,6 +51,7 @@ func addQuoteFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&flagRefundTo, "refund-to", "", "Refund address on origin chain")
 	cmd.Flags().IntVar(&flagAppFee, "app-fee", 0, "Partner fee in basis points")
 	cmd.Flags().StringVar(&flagFeeRecip, "fee-recipient", "", "NEAR address to receive partner fees")
+	cmd.Flags().BoolVar(&flagNative, "native", false, "Use NEAR-native intents mode (swap wrapped assets on NEAR)")
 	cmd.MarkFlagRequired("from")
 	cmd.MarkFlagRequired("to")
 	cmd.MarkFlagRequired("amount")
@@ -62,12 +65,24 @@ func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*Quote
 		return nil, nil, &ResolveError{Code: "API_ERROR", Message: "Failed to fetch tokens: " + err.Error()}
 	}
 
+	// Default chains to "near" in native mode
+	fromChain := flagFromChain
+	toChain := flagToChain
+	if flagNative {
+		if fromChain == "" {
+			fromChain = "near"
+		}
+		if toChain == "" {
+			toChain = "near"
+		}
+	}
+
 	// Resolve from/to tokens
-	fromToken, err := resolveTokenByIdOrSymbol(flagFrom, flagFromChain, tokens)
+	fromToken, err := resolveTokenByIdOrSymbol(flagFrom, fromChain, tokens)
 	if err != nil {
 		return nil, nil, err
 	}
-	toToken, err := resolveTokenByIdOrSymbol(flagTo, flagToChain, tokens)
+	toToken, err := resolveTokenByIdOrSymbol(flagTo, toChain, tokens)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -94,6 +109,15 @@ func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*Quote
 		}
 	}
 
+	recipientType := "DESTINATION_CHAIN"
+	refundType := "ORIGIN_CHAIN"
+	depositType := "ORIGIN_CHAIN"
+	if flagNative {
+		recipientType = "INTENTS"
+		refundType = "INTENTS"
+		depositType = "INTENTS"
+	}
+
 	req := &QuoteRequest{
 		Dry:               dry,
 		SwapType:          flagSwapType,
@@ -102,10 +126,10 @@ func buildQuoteRequest(client *Client, dry bool, deadline time.Duration) (*Quote
 		DestinationAsset:  toToken.AssetId,
 		Amount:            amountRaw,
 		Recipient:         recipient,
-		RecipientType:     "DESTINATION_CHAIN",
+		RecipientType:     recipientType,
 		RefundTo:          refundTo,
-		RefundType:        "ORIGIN_CHAIN",
-		DepositType:       "ORIGIN_CHAIN",
+		RefundType:        refundType,
+		DepositType:       depositType,
 		Deadline:          time.Now().Add(deadline),
 	}
 

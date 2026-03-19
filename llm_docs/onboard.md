@@ -54,6 +54,61 @@ near-intents status --deposit-address <addr>
 ```
 Repeat until you get a terminal status.
 
+## Native Mode (NEAR-only swaps)
+
+Use `--native` when swapping tokens that are already inside the NEAR Intents system (wrapped/bridged assets on NEAR). These swaps finalize in ~1 second — no cross-chain wait.
+
+### When to use `--native`
+
+- User wants to swap between wrapped assets on NEAR (e.g., wNEAR ↔ USDC on NEAR)
+- Both source and destination tokens are on the `near` blockchain
+- User wants sub-second swap finality
+- User already has tokens deposited in the intents system
+
+Do NOT use `--native` when tokens need to move between different blockchains (e.g., Ethereum USDC → NEAR wNEAR). Use the standard cross-chain flow instead.
+
+### Native swap workflow
+
+#### Step 1: Preview the rate
+```
+near-intents quote --native --from wNEAR --to USDC --amount 10
+```
+Same output as a regular quote. `--from-chain` / `--to-chain` default to `near` in native mode.
+
+#### Step 2: Execute the swap
+```
+near-intents swap --native --from wNEAR --to USDC --amount 10 \
+  --recipient alice.near --refund-to alice.near --sender alice.near
+```
+Returns a `nearTransaction` object instead of a `signingUrl`:
+```json
+{
+  "nearTransaction": {
+    "contractId": "wrap.near",
+    "method": "ft_transfer_call",
+    "args": {
+      "receiver_id": "intents.near",
+      "amount": "1000000000000000000000000",
+      "msg": "<depositAddress>"
+    },
+    "gas": "100 Tgas",
+    "deposit": "1 yoctoNEAR",
+    "signerId": "alice.near"
+  }
+}
+```
+The `nearTransaction` contains everything needed to construct a NEAR transaction. The user (or another tool) must execute this `ft_transfer_call` on the NEAR blockchain.
+
+#### Step 3: Submit transaction hash
+```
+near-intents submit-tx --deposit-address <addr> --tx-hash <hash> --near-sender alice.near
+```
+
+#### Step 4: Poll for completion
+```
+near-intents status --deposit-address <addr>
+```
+
 ## Commands Reference
 
 ### `near-intents tokens`
@@ -82,6 +137,7 @@ Dry-run quote — check rates without committing.
 | `--refund-to` | No | — | Optional for quote |
 | `--app-fee` | No | — | Partner fee in basis points |
 | `--fee-recipient` | No | — | NEAR address for partner fees |
+| `--native` | No | false | Use NEAR-native intents mode (both tokens must be on NEAR) |
 
 ### `near-intents swap`
 Execute swap — generates deposit address and signing URL.
@@ -93,6 +149,8 @@ All flags from `quote`, plus:
 | `--recipient` | Yes | — | Destination address for swapped tokens |
 | `--refund-to` | Yes | — | Refund address on origin chain |
 | `--deadline` | No | 1h | Deadline duration (e.g., 30m, 2h) |
+| `--native` | No | false | Use NEAR-native intents mode |
+| `--sender` | When `--native` | — | NEAR account that will sign the ft_transfer_call |
 
 ### `near-intents submit-tx`
 Submit deposit transaction hash. Optional but recommended.
@@ -144,6 +202,51 @@ Common asset ID patterns:
 - **Incomplete deposit**: Funds will be automatically refunded to the `--refund-to` address.
 - **Status stuck on PROCESSING**: Keep polling — cross-chain swaps can take several minutes.
 
+## Portfolio Intelligence
+
+The `intel` command connects to Flipside AI agents for portfolio analysis, rebalancing recommendations, and on-chain intelligence.
+
+### Setup
+
+Requires a Flipside API key (get one at https://flipsidecrypto.xyz):
+- Flag: `near-intents intel --flipside-api-key <key>`
+- Environment variable: `FLIPSIDE_API_KEY=<key>`
+- Config file: `~/.near-intents.json` → `{"flipside_api_key": "<key>"}`
+
+### `near-intents intel`
+
+Send a natural language message to a Flipside AI agent. The agent can look up wallet balances, analyze portfolio composition, and recommend rebalancing strategies.
+
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--message` | Yes | — | Natural language request for the agent |
+| `--flipside-api-key` | Yes (if not in env/config) | — | Flipside API key |
+| `--agent` | No | `trading_agent` | Flipside agent to query |
+
+### Example: Portfolio Rebalancing
+
+```bash
+# Ask the agent to analyze wallets and suggest rebalancing
+near-intents intel --message "I have these wallets:
+- 0xABC123 on ethereum
+- alice.near on near
+- 7xKP... on solana
+Analyze my balances and suggest how to rebalance evenly across stablecoins."
+
+# The response includes the agent's analysis and recommendations.
+# Use the recommendations to execute swaps:
+near-intents swap --from USDC --from-chain ethereum --to USDT --to-chain near --amount 500 \
+  --recipient alice.near --refund-to 0xABC123
+```
+
+### Intel → Swap Workflow
+
+1. Use `intel` to get portfolio analysis and rebalancing recommendations
+2. Parse the agent's recommendations
+3. Use `quote` to preview each recommended swap
+4. Use `swap` to execute the swaps the user approves
+5. Track each swap with `status`
+
 ## Output Format
 
 Every command returns JSON:
@@ -177,5 +280,24 @@ near-intents swap --from USDC --from-chain ethereum --to wNEAR --to-chain near -
 near-intents submit-tx --deposit-address <addr> --tx-hash <hash>
 
 # 6. Check status
+near-intents status --deposit-address <addr>
+```
+
+## Example: Native swap wNEAR → USDC on NEAR
+
+```bash
+# 1. Check the rate
+near-intents quote --native --from wNEAR --to USDC --amount 10
+
+# 2. Execute native swap
+near-intents swap --native --from wNEAR --to USDC --amount 10 \
+  --recipient alice.near --refund-to alice.near --sender alice.near
+
+# 3. User executes the nearTransaction on NEAR (via near-cli or programmatically)
+
+# 4. Submit tx hash
+near-intents submit-tx --deposit-address <addr> --tx-hash <hash> --near-sender alice.near
+
+# 5. Check status
 near-intents status --deposit-address <addr>
 ```
