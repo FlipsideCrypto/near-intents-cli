@@ -56,58 +56,9 @@ Repeat until you get a terminal status.
 
 ## Native Mode (NEAR-only swaps)
 
-Use `--native` when swapping tokens that are already inside the NEAR Intents system (wrapped/bridged assets on NEAR). These swaps finalize in ~1 second — no cross-chain wait.
+Add `--native` to `quote` or `swap` to swap tokens already inside the NEAR Intents system (wrapped/bridged assets on NEAR). These swaps finalize in ~1 second. Use this when both tokens are on the `near` blockchain. The swap output includes a `nearTransaction` object instead of a `signingUrl`.
 
-### When to use `--native`
-
-- User wants to swap between wrapped assets on NEAR (e.g., wNEAR ↔ USDC on NEAR)
-- Both source and destination tokens are on the `near` blockchain
-- User wants sub-second swap finality
-- User already has tokens deposited in the intents system
-
-Do NOT use `--native` when tokens need to move between different blockchains (e.g., Ethereum USDC → NEAR wNEAR). Use the standard cross-chain flow instead.
-
-### Native swap workflow
-
-#### Step 1: Preview the rate
-```
-near-intents quote --native --from wNEAR --to USDC --amount 10
-```
-Same output as a regular quote. `--from-chain` / `--to-chain` default to `near` in native mode.
-
-#### Step 2: Execute the swap
-```
-near-intents swap --native --from wNEAR --to USDC --amount 10 \
-  --recipient alice.near --refund-to alice.near --sender alice.near
-```
-Returns a `nearTransaction` object instead of a `signingUrl`:
-```json
-{
-  "nearTransaction": {
-    "contractId": "wrap.near",
-    "method": "ft_transfer_call",
-    "args": {
-      "receiver_id": "intents.near",
-      "amount": "1000000000000000000000000",
-      "msg": "<depositAddress>"
-    },
-    "gas": "100 Tgas",
-    "deposit": "1 yoctoNEAR",
-    "signerId": "alice.near"
-  }
-}
-```
-The `nearTransaction` contains everything needed to construct a NEAR transaction. The user (or another tool) must execute this `ft_transfer_call` on the NEAR blockchain.
-
-#### Step 3: Submit transaction hash
-```
-near-intents submit-tx --deposit-address <addr> --tx-hash <hash> --near-sender alice.near
-```
-
-#### Step 4: Poll for completion
-```
-near-intents status --deposit-address <addr>
-```
+For full details on native swaps, wrapped assets, and the `ft_transfer_call` mechanism, run: `near-intents llm topic native-swaps`
 
 ## Commands Reference
 
@@ -283,21 +234,6 @@ near-intents submit-tx --deposit-address <addr> --tx-hash <hash>
 near-intents status --deposit-address <addr>
 ```
 
-## Example: Native swap wNEAR → USDC on NEAR
+## Deep-dive topics
 
-```bash
-# 1. Check the rate
-near-intents quote --native --from wNEAR --to USDC --amount 10
-
-# 2. Execute native swap
-near-intents swap --native --from wNEAR --to USDC --amount 10 \
-  --recipient alice.near --refund-to alice.near --sender alice.near
-
-# 3. User executes the nearTransaction on NEAR (via near-cli or programmatically)
-
-# 4. Submit tx hash
-near-intents submit-tx --deposit-address <addr> --tx-hash <hash> --near-sender alice.near
-
-# 5. Check status
-near-intents status --deposit-address <addr>
-```
+For detailed knowledge on specific topics, run `near-intents llm topics` to see what's available, then `near-intents llm topic <name>` to read a topic.
