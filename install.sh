@@ -1,81 +1,191 @@
 #!/bin/sh
+# near-intents + portfolio CLI Installer
+# Usage: curl -fsSL https://raw.githubusercontent.com/FlipsideCrypto/near-intents-cli/main/install.sh | sh
+# Or with specific version: VERSION=v0.1.0 curl -fsSL ... | sh
+
 set -e
 
-# Install near-intents and portfolio CLI tools
-# Usage: curl -fsSL https://raw.githubusercontent.com/FlipsideCrypto/near-intents-cli/main/install.sh | sh
-
 REPO="FlipsideCrypto/near-intents-cli"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
-VERSION="${VERSION:-latest}"
+GITHUB_API="https://api.github.com/repos/${REPO}/releases/latest"
+GITHUB_DOWNLOAD="https://github.com/${REPO}/releases/download"
 
-# Detect OS and architecture
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-ARCH=$(uname -m)
-
-case "$ARCH" in
-  x86_64)  ARCH="amd64" ;;
-  aarch64) ARCH="arm64" ;;
-  arm64)   ARCH="arm64" ;;
-  *)       echo "Unsupported architecture: $ARCH"; exit 1 ;;
-esac
-
-case "$OS" in
-  linux)  ;;
-  darwin) ;;
-  *)      echo "Unsupported OS: $OS"; exit 1 ;;
-esac
-
-# Resolve version
-if [ "$VERSION" = "latest" ]; then
-  VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-  if [ -z "$VERSION" ]; then
-    echo "Failed to fetch latest version. Set VERSION explicitly:"
-    echo "  VERSION=v0.1.0 curl -fsSL ... | sh"
-    exit 1
-  fi
+# Colors (only if terminal supports them)
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m'
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    NC=''
 fi
 
-# Strip leading v for archive names
-VERSION_NUM="${VERSION#v}"
+info()    { printf "${BLUE}==>${NC} %s\n" "$1"; }
+success() { printf "${GREEN}==>${NC} %s\n" "$1"; }
+warn()    { printf "${YELLOW}Warning:${NC} %s\n" "$1"; }
+error()   { printf "${RED}Error:${NC} %s\n" "$1" >&2; exit 1; }
 
-echo "Installing near-intents and portfolio ${VERSION} for ${OS}/${ARCH}..."
-
-TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
-
-download_and_install() {
-  TOOL=$1
-  ARCHIVE="${TOOL}_${VERSION_NUM}_${OS}_${ARCH}.tar.gz"
-  URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
-
-  echo "  Downloading ${TOOL}..."
-  if ! curl -fsSL "$URL" -o "${TMP}/${ARCHIVE}"; then
-    echo "  Failed to download ${TOOL} from ${URL}"
-    echo "  Check that version ${VERSION} exists at https://github.com/${REPO}/releases"
-    return 1
-  fi
-
-  tar -xzf "${TMP}/${ARCHIVE}" -C "$TMP"
-
-  if [ -w "$INSTALL_DIR" ]; then
-    mv "${TMP}/${TOOL}" "${INSTALL_DIR}/${TOOL}"
-  else
-    echo "  Need sudo to install to ${INSTALL_DIR}"
-    sudo mv "${TMP}/${TOOL}" "${INSTALL_DIR}/${TOOL}"
-  fi
-
-  chmod +x "${INSTALL_DIR}/${TOOL}"
-  echo "  Installed ${TOOL} to ${INSTALL_DIR}/${TOOL}"
+detect_os() {
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    case "$OS" in
+        darwin) echo "darwin" ;;
+        linux)  echo "linux" ;;
+        *)      error "Unsupported operating system: $OS" ;;
+    esac
 }
 
-download_and_install "near-intents"
-download_and_install "portfolio"
+detect_arch() {
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64|amd64)  echo "amd64" ;;
+        arm64|aarch64) echo "arm64" ;;
+        *)             error "Unsupported architecture: $ARCH" ;;
+    esac
+}
 
-echo ""
-echo "Done! Verify with:"
-echo "  near-intents --version"
-echo "  portfolio --version"
-echo ""
-echo "Get started:"
-echo "  near-intents llm onboard    # learn the swap CLI"
-echo "  portfolio llm onboard       # learn the portfolio CLI"
+check_dependencies() {
+    for cmd in curl tar; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            error "Required command not found: $cmd"
+        fi
+    done
+}
+
+get_latest_version() {
+    info "Fetching latest version..." >&2
+    LATEST=$(curl -fsSL "$GITHUB_API" 2>/dev/null | grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$LATEST" ]; then
+        error "Failed to fetch latest version from GitHub. Set VERSION explicitly: VERSION=v0.1.0 curl -fsSL ... | sh"
+    fi
+    echo "$LATEST"
+}
+
+determine_install_dir() {
+    if [ -n "$INSTALL_DIR" ]; then
+        echo "$INSTALL_DIR"
+        return
+    fi
+
+    # Default to ~/.local/bin — no sudo required
+    LOCAL_BIN="${HOME}/.local/bin"
+    mkdir -p "$LOCAL_BIN"
+    echo "$LOCAL_BIN"
+}
+
+check_path() {
+    INSTALL_DIR="$1"
+    case ":$PATH:" in
+        *":${INSTALL_DIR}:"*) return 0 ;;
+    esac
+
+    echo ""
+    warn "${INSTALL_DIR} is not in your PATH"
+    echo ""
+    echo "Add it to your shell configuration:"
+    echo ""
+    SHELL_NAME=$(basename "$SHELL")
+    case "$SHELL_NAME" in
+        bash) echo "  echo 'export PATH=\"\$PATH:${INSTALL_DIR}\"' >> ~/.bashrc && source ~/.bashrc" ;;
+        zsh)  echo "  echo 'export PATH=\"\$PATH:${INSTALL_DIR}\"' >> ~/.zshrc && source ~/.zshrc" ;;
+        fish) echo "  fish_add_path ${INSTALL_DIR}" ;;
+        *)    echo "  export PATH=\"\$PATH:${INSTALL_DIR}\"" ;;
+    esac
+    echo ""
+}
+
+download_and_install() {
+    TOOL="$1"
+    VERSION="$2"
+    OS="$3"
+    ARCH="$4"
+    TMPDIR="$5"
+    INSTALL_DIR="$6"
+
+    VERSION_NUM="${VERSION#v}"
+    ARCHIVE="${TOOL}_${VERSION_NUM}_${OS}_${ARCH}.tar.gz"
+    URL="${GITHUB_DOWNLOAD}/${VERSION}/${ARCHIVE}"
+    CHECKSUM_URL="${GITHUB_DOWNLOAD}/${VERSION}/checksums.txt"
+
+    info "Downloading ${TOOL} ${VERSION}..."
+    if ! curl -fsSL -o "${TMPDIR}/${ARCHIVE}" "$URL"; then
+        error "Failed to download ${TOOL} from ${URL}\nCheck that version ${VERSION} exists at https://github.com/${REPO}/releases"
+    fi
+
+    # Checksum verification
+    if curl -fsSL -o "${TMPDIR}/checksums.txt" "$CHECKSUM_URL" 2>/dev/null; then
+        EXPECTED=$(grep "${ARCHIVE}" "${TMPDIR}/checksums.txt" | awk '{print $1}')
+        if [ -n "$EXPECTED" ]; then
+            if command -v sha256sum >/dev/null 2>&1; then
+                ACTUAL=$(sha256sum "${TMPDIR}/${ARCHIVE}" | awk '{print $1}')
+            elif command -v shasum >/dev/null 2>&1; then
+                ACTUAL=$(shasum -a 256 "${TMPDIR}/${ARCHIVE}" | awk '{print $1}')
+            fi
+            if [ -n "$ACTUAL" ] && [ "$EXPECTED" != "$ACTUAL" ]; then
+                error "Checksum verification failed for ${TOOL}. The download may be corrupted."
+            fi
+            success "Checksum verified"
+        fi
+    else
+        warn "Could not fetch checksums — skipping verification"
+    fi
+
+    tar -xzf "${TMPDIR}/${ARCHIVE}" -C "${TMPDIR}"
+
+    if [ ! -f "${TMPDIR}/${TOOL}" ]; then
+        error "Binary not found after extraction"
+    fi
+
+    chmod +x "${TMPDIR}/${TOOL}"
+
+    if [ ! -w "$INSTALL_DIR" ]; then
+        error "Cannot write to ${INSTALL_DIR}. Set INSTALL_DIR to a writable path."
+    fi
+
+    mv "${TMPDIR}/${TOOL}" "${INSTALL_DIR}/${TOOL}"
+    success "Installed ${TOOL} to ${INSTALL_DIR}/${TOOL}"
+}
+
+main() {
+    echo ""
+    echo "near-intents + portfolio Installer"
+    echo "==================================="
+    echo ""
+
+    check_dependencies
+
+    OS=$(detect_os)
+    ARCH=$(detect_arch)
+    info "Detected platform: ${OS}/${ARCH}"
+
+    if [ -n "$VERSION" ]; then
+        info "Using specified version: ${VERSION}"
+    else
+        VERSION=$(get_latest_version)
+        info "Latest version: ${VERSION}"
+    fi
+
+    TMPDIR=$(mktemp -d)
+    trap 'rm -rf "$TMPDIR"' EXIT
+
+    INSTALL_DIR=$(determine_install_dir)
+    info "Installing to: ${INSTALL_DIR}"
+
+    download_and_install "near-intents" "$VERSION" "$OS" "$ARCH" "$TMPDIR" "$INSTALL_DIR"
+    download_and_install "portfolio"    "$VERSION" "$OS" "$ARCH" "$TMPDIR" "$INSTALL_DIR"
+
+    check_path "$INSTALL_DIR"
+
+    echo ""
+    success "Installation complete!"
+    echo ""
+    echo "Get started:"
+    echo "  near-intents llm onboard    # learn the swap CLI"
+    echo "  portfolio llm onboard       # learn the portfolio CLI"
+    echo ""
+}
+
+main
