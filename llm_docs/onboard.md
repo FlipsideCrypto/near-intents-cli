@@ -6,19 +6,63 @@ You have access to `near-intents`, a CLI for cross-chain token swaps via the NEA
 
 When someone says "rebalance my portfolio" or "swap my NEAR for ETH", they have no idea about wrapping, storage deposits, intents balances, signing URLs, or cross-chain routing. Your job is to bridge that gap — do the discovery work, then present a plain-language plan before touching anything.
 
+### Parsing user intent — get the direction right first
+
+Natural language is ambiguous. Resolve it before doing anything else.
+
+| User says | Correct interpretation |
+|-----------|----------------------|
+| "send 20 dollars of BTC to alice.near" | User **has BTC**, wants to deliver NEAR to alice.near |
+| "buy ETH for alice.near" | User has something else, wants ETH at alice.near |
+| "swap my NEAR for USDC" | User **has NEAR**, wants USDC |
+| "swap USDC into my wallet" | User **has USDC** somewhere, wants it in their wallet |
+
+**"Send X to Y" always means the user has X and wants it (or its value) delivered to Y.** It does not mean "convert something into X." When in doubt, ask: "Just to confirm — you're starting with [token A] and want to end up with [token B] at [address]?"
+
+**Always confirm direction explicitly before quoting or executing:**
+> "You're sending BTC and receiving NEAR at borrakkor.near — is that right?"
+
+Never skip this confirmation. A swap in the wrong direction creates a live intent with a 24h deadline that can't be cancelled.
+
 ### Step 1: Check which of their assets are actually supported
 
-Not everything can be swapped. Before planning anything, check:
+Not everything can be swapped. Search **all chains first** — don't narrow to one chain until you understand all the routing options:
 
 ```
-near-intents tokens --search <symbol>
+near-intents tokens --search BTC
+# shows: BTC on bitcoin, nbtc.bridge.near (nep141), wBTC variants, etc.
 ```
+
+Searching only `--chain near` misses the native chain option. Always start broad, then choose the best route.
 
 For each asset the user holds, determine:
 - **`nep141:` asset ID found** → native mode is possible (fast, NEAR-only)
 - **`1cs_v1:` asset ID only** → cross-chain mode only, even though it's on NEAR
-- **Found on another chain** (ethereum, solana, etc.) → cross-chain swap, browser signing required
+- **Found on another chain** (bitcoin, ethereum, solana, etc.) → cross-chain swap, browser signing required
 - **Not found at all** → can't swap it — tell the user upfront, don't skip over it
+
+If a token has multiple representations (e.g., wBTC on NEAR and BTC on bitcoin), try the native chain version first — it tends to have better liquidity. Fall back to bridged variants if the quote fails.
+
+### Default to cross-chain (signingUrl) mode
+
+Unless the user explicitly says they have near-cli set up, or you've confirmed credentials exist in `~/.near-credentials/mainnet/`, **default to the cross-chain signing URL flow**. Native mode requires near-cli, on-chain transactions, and several manual steps. Most users just want a link to click.
+
+Only switch to native mode when:
+- User confirms near-cli is installed and credentials exist
+- Both tokens are `nep141:` on NEAR
+- User wants the fastest possible execution and understands the extra steps
+
+### Gather all required info before quoting
+
+Don't start quoting and discover missing info mid-way. Collect upfront:
+
+| Swap type | What you need before quoting |
+|-----------|------------------------------|
+| Any swap | Source token + amount, destination token, destination address |
+| Cross-chain FROM non-NEAR chain | **Refund address on the source chain** (e.g., a Bitcoin address if swapping from BTC) |
+| Native mode | NEAR account ID, near-cli confirmed available |
+
+For cross-chain swaps **from** Bitcoin, Ethereum, Solana, etc. — ask for the refund address before calling `swap`. The CLI will reject the call without it and you'll waste a round trip.
 
 ### Step 2: Map each holding to the simplest available path
 
@@ -454,6 +498,17 @@ These errors were observed during real agent testing. Read these BEFORE attempti
 | `sign-with-keychain` without `send` | Causes near-cli to prompt interactively, which fails in non-TTY shells. Always end with `send` |
 | Parallel ft_transfer_call transactions | Run sequentially — they share the signer nonce and will conflict if run in parallel |
 | Swapping the full human-readable balance | Query `ft_balance_of` first and truncate the result — see "Swapping a Full Balance" above |
+
+### Intent and direction mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| "Send X to Y" interpreted as "buy X" | "Send X to Y" means user **has X**, wants value delivered to Y. Confirm direction before quoting. |
+| Executing swap before confirming direction | Always ask: "You're sending [A] and receiving [B] at [address] — correct?" A wrong-direction swap creates a live 24h intent. |
+| Searching `--chain near` only for a token like BTC | Search all chains first (`--search BTC`), then choose the best route. Native chain often has better liquidity than bridged variants. |
+| Defaulting to native mode | Default to cross-chain (signingUrl) unless user confirms near-cli credentials exist. |
+| Trying bridged token variant first (wBTC) | Try the native chain version first (BTC on bitcoin). Fall back to bridged if quote fails. |
+| Quoting without the refund address for non-NEAR source chains | Ask for refund address on the source chain (e.g., a Bitcoin address) before calling swap — the CLI will reject without it. |
 
 ### Missing required swap flags
 

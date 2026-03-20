@@ -72,3 +72,8 @@ Never skip OBSERVE. Never skip CONFIRM.
 | Trying `near-intents withdraw` | No such command. Use `ft_withdraw` on `intents.near` via near-cli directly |
 | Using `nep141:` prefix in withdrawal args | Strip it — `ft_withdraw` takes bare contract ID (e.g., `wrap.near` not `nep141:wrap.near`) |
 | Using `mt_withdraw` for standard tokens | Use `ft_withdraw` for NEP-141 tokens (wNEAR, USDC, etc.) — `mt_withdraw` is for NEP-245 only |
+| "Send X to Y" = buy X | It means user **has X**, deliver to Y. Confirm direction before quoting: "You're sending [A], receiving [B] at [address] — right?" |
+| Searching tokens on one chain only | Search all chains first (`--search BTC`), then choose the best route — native chain beats bridged |
+| Defaulting to native swap mode | Default to cross-chain (signingUrl) unless user confirms near-cli is set up |
+| Quoting cross-chain swap without refund address | For non-NEAR source chains, ask for a refund address on that chain before calling swap |
+| Trying bridged token before native chain | Try native chain version first (BTC on bitcoin > wBTC on NEAR). Fall back if quote fails. |
