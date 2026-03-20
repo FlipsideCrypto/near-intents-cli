@@ -1,7 +1,8 @@
 version: 2
 
 builds:
-  - main: .
+  - id: near-intents
+    main: .
     binary: near-intents
     ldflags:
       - -s -w
@@ -15,9 +16,31 @@ builds:
       - amd64
       - arm64
 
+  - id: portfolio
+    main: ./cmd/portfolio
+    binary: portfolio
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
 archives:
-  - format: tar.gz
+  - id: near-intents
+    builds: [near-intents]
+    format: tar.gz
     name_template: "near-intents_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+  - id: portfolio
+    builds: [portfolio]
+    format: tar.gz
+    name_template: "portfolio_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: "checksums.txt"

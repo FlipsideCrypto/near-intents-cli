@@ -7,6 +7,18 @@ description: Use when user asks about crypto trading, swaps, portfolio rebalanci
 
 Orchestrate crypto portfolio management and cross-chain swaps using two CLI tools.
 
+## Install
+
+If `near-intents` or `portfolio` are not installed, run:
+
+```
+curl -fsSL https://raw.githubusercontent.com/FlipsideCrypto/near-intents-cli/main/install.sh | sh
+```
+
+Or with a specific version: `VERSION=v0.1.0 curl -fsSL ... | sh`
+
+Custom install dir: `INSTALL_DIR=~/.local/bin curl -fsSL ... | sh`
+
 ## Tools
 
 | Tool | Purpose | Onboard command |
