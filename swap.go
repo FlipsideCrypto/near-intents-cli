@@ -28,19 +28,19 @@ func init() {
 }
 
 func runSwap(cmd *cobra.Command, args []string) error {
+	var missing []string
 	if flagRecipient == "" {
-		PrintErrorResponse("INVALID_FLAGS", "--recipient is required for swap")
-		return nil
+		missing = append(missing, "--recipient")
 	}
 	if flagRefundTo == "" {
-		PrintErrorResponse("INVALID_FLAGS", "--refund-to is required for swap")
-		return nil
+		missing = append(missing, "--refund-to")
 	}
-	if flagNative {
-		if flagSender == "" {
-			PrintErrorResponse("INVALID_FLAGS", "--sender is required for native swap")
-			return nil
-		}
+	if flagNative && flagSender == "" {
+		missing = append(missing, "--sender (required for native swap)")
+	}
+	if len(missing) > 0 {
+		PrintErrorResponse("INVALID_FLAGS", "missing required flags: "+strings.Join(missing, ", "))
+		return nil
 	}
 
 	cfg := loadConfig()

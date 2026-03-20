@@ -14,7 +14,7 @@ Orchestrate crypto portfolio management and cross-chain swaps using two CLI tool
 | `portfolio` | Read balances across all chains | `portfolio llm onboard` |
 | `near-intents` | Execute swaps + get intel | `near-intents llm onboard` |
 
-**Always run the onboard command first** to learn available flags and workflows. Do not guess at syntax.
+**Run the onboard command for each tool BEFORE your first use.** The onboard output contains the full flag reference, required vs optional flags, and critical gotchas (wrapping, storage deposits, withdrawal steps). Do not guess at syntax — flags like `--sender`, `--recipient`, `--refund-to` are required for swaps and not obvious.
 
 ## The Loop
 
