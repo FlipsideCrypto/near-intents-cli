@@ -323,6 +323,54 @@ or on failure:
 
 Use `--pretty` for indented JSON output. Default is compact JSON for machine consumption.
 
+## Common Agent Mistakes
+
+These errors were observed during real agent testing. Read these BEFORE attempting swaps.
+
+### Wrong flag names
+
+| Wrong | Correct | Context |
+|-------|---------|---------|
+| `--account` | `--sender` | NEAR account signing the transaction (swap --native) |
+| `--amount-side from` | (drop it) | `--swap-type EXACT_INPUT` is the default, no extra flag needed |
+| `--correlation-id` | `--deposit-address` | Use the deposit address from swap output for status checks |
+
+### Missing required swap flags
+
+`near-intents swap` requires ALL THREE for native swaps:
+- `--sender` — NEAR account signing the tx
+- `--recipient` — where output tokens go
+- `--refund-to` — where to refund on failure
+
+For self-swaps, set all three to the same account.
+
+### Withdrawal is NOT a CLI command
+
+There is no `near-intents withdraw`. After a native swap, output tokens are inside `intents.near`. To move them to the wallet, call `ft_withdraw` on the `intents.near` contract directly using near-cli:
+
+```
+near contract call-function as-transaction intents.near ft_withdraw \
+  json-args '{"token":"wrap.near","amount":"<raw_amount>","receiver_id":"alice.near"}' \
+  prepaid-gas '100.0 Tgas' attached-deposit '1 yoctoNEAR' \
+  sign-as alice.near network-config mainnet send
+```
+
+**Critical details:**
+- Use `ft_withdraw` for NEP-141 tokens (wNEAR, USDC, ETH bridges, etc.) — this is almost all tokens
+- Use `mt_withdraw` ONLY for NEP-245 multi-token contracts (rare)
+- The `token` field is the **bare contract ID** (e.g., `wrap.near`), NOT the `nep141:`-prefixed asset ID
+- Amount is the raw integer string (e.g., `"846915650336104516539012"`), not human-readable
+
+### The nep141: prefix trap
+
+The `nep141:` prefix appears in asset IDs throughout the system but must be STRIPPED when:
+- Calling `ft_withdraw` on `intents.near` (the `token` field is a bare account ID)
+- Calling `ft_balance_of` on token contracts
+
+It must be KEPT when:
+- Passing `--from` / `--to` to `near-intents quote` and `swap`
+- Querying `mt_batch_balance_of` on `intents.near`
+
 ## Deep-dive topics
 
 For detailed knowledge on specific topics, run `near-intents llm topics` to see what's available, then `near-intents llm topic <name>` to read a topic.

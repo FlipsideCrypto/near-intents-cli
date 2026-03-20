@@ -41,13 +41,17 @@ Never skip OBSERVE. Never skip CONFIRM.
 - **`assetId` fields** in balance output feed directly into `near-intents swap --from` / `--to`.
 - **Two swap modes**: native (NEAR-only, fast, needs near-cli) and cross-chain (any chain, uses signing URL in browser).
 - **Flipside intel** is for analytical recommendations ("how should I rebalance?"), not balance lookups (use `portfolio balances` for that).
+- **No withdraw CLI command.** After native swaps, tokens land in intents.near. Withdraw via `ft_withdraw` on `intents.near` using near-cli directly. See onboard docs for exact syntax.
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Guessing command syntax | Run `llm onboard` for each tool first |
+| Guessing flag names (--account, --correlation-id) | Run `llm onboard` — correct flags are --sender, --deposit-address, etc. |
 | Querying balances without setup | Check `portfolio setup --list` first |
 | Advising on rebalancing yourself | Use `near-intents intel` for recommendations |
 | Executing swaps without confirmation | Always present plan with fees, wait for approval |
 | Assuming all tokens are in wallet | Check intents balance separately — it's a different "chain" in the output |
+| Trying `near-intents withdraw` | No such command. Use `ft_withdraw` on `intents.near` via near-cli directly |
+| Using `nep141:` prefix in withdrawal args | Strip it — `ft_withdraw` takes bare contract ID (e.g., `wrap.near` not `nep141:wrap.near`) |
+| Using `mt_withdraw` for standard tokens | Use `ft_withdraw` for NEP-141 tokens (wNEAR, USDC, etc.) — `mt_withdraw` is for NEP-245 only |
