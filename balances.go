@@ -271,7 +271,6 @@ func runBalances(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		if t.ContractAddress == nil {
-			// This is the native NEAR token entry
 			nearNativePrice = float64(t.Price)
 			continue
 		}
@@ -283,6 +282,10 @@ func runBalances(cmd *cobra.Command, args []string) error {
 			assetID:  t.AssetId,
 		}
 		intentTokenIDs = append(intentTokenIDs, "nep141:"+ca)
+		// Use wNEAR price as fallback for native NEAR if registry lacks a native entry
+		if (t.Symbol == "wNEAR" || t.Symbol == "NEAR") && nearNativePrice == 0 {
+			nearNativePrice = float64(t.Price)
+		}
 	}
 
 	// Fan out 3 queries in parallel
@@ -421,14 +424,19 @@ func runBalances(cmd *cobra.Command, args []string) error {
 
 	intentsChain := chainBalance{
 		Chain:    "near-intents",
-		Address:  "intents.near",
+		Address:  flagAccount,
 		TotalUsd: intentsTotalUsd,
 		Tokens:   intentsTokens,
 	}
 
 	out := balancesOutput{
 		TotalUsd: nearTotalUsd + intentsTotalUsd,
-		Chains:   []chainBalance{nearChain, intentsChain},
+	}
+	if len(nearTokens) > 0 {
+		out.Chains = append(out.Chains, nearChain)
+	}
+	if len(intentsTokens) > 0 {
+		out.Chains = append(out.Chains, intentsChain)
 	}
 
 	PrintSuccess(out)

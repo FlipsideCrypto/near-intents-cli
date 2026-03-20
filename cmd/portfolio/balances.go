@@ -267,6 +267,10 @@ func fetchTokenRegistry() (map[string]providers.NEARTokenInfo, map[string]provid
 			if t.Symbol == "NEAR" {
 				nearPrice = t.Price
 			}
+			// Use wNEAR price as fallback for native NEAR if registry lacks a native entry
+			if (t.Symbol == "wNEAR" || t.Symbol == "NEAR") && nearPrice == 0 && t.ContractAddress != nil {
+				nearPrice = t.Price
+			}
 			if t.ContractAddress != nil {
 				info := providers.NEARTokenInfo{
 					Symbol:   t.Symbol,
