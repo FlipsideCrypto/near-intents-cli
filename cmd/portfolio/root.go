@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/FlipsideCrypto/near-intents-cli/internal/output"
+	"github.com/FlipsideCrypto/near-intents-cli/internal/updater"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +22,9 @@ var rootCmd = &cobra.Command{
 	Version: version,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		output.PrettyOutput = flagPretty
+		if cmd.Name() != "update" && cmd.Name() != "version" {
+			updater.AutoCheck("portfolio", version)
+		}
 	},
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/FlipsideCrypto/near-intents-cli/internal/updater"
 	"github.com/spf13/cobra"
 )
 
@@ -19,6 +20,9 @@ var rootCmd = &cobra.Command{
 	Version: version,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		prettyOutput = flagPretty
+		if cmd.Name() != "update" && cmd.Name() != "version" {
+			updater.AutoCheck("near-intents", version)
+		}
 	},
 }
 
