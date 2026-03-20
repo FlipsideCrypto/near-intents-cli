@@ -22,6 +22,41 @@ Do NOT assume the user understands:
 
 When in doubt, over-explain. A confused user who approves a transaction they didn't understand is worse than a user who has to read an extra sentence.
 
+## Before you start: Discovery checklist
+
+When a user asks you to do something with swaps (e.g., "rebalance my portfolio", "swap some NEAR for USDC", "buy some ETH"), don't jump into execution. Walk through these steps first:
+
+### 1. Understand what they actually want
+- What tokens do they want to end up with? In what amounts or proportions?
+- Are they swapping on NEAR only, or across chains (e.g., Ethereum ↔ NEAR)?
+- Do they want tokens in their NEAR wallet, or on another chain?
+- If they say "rebalance" — into what? Equal weights? Specific allocations? Ask.
+
+### 2. Identify the user's NEAR account
+- Check `~/.near-credentials/mainnet/` for existing near-cli credentials — files are named `<account>.json`
+- If found, confirm with the user: "I see a NEAR account `alice.near` on this machine — is that the one you want to use?"
+- If not found, ask the user for their NEAR account ID
+
+### 3. Check if near-cli is available
+- For native swaps, the user needs to sign NEAR transactions. Check if `near` CLI is installed: `which near`
+- If not installed, the user will need another way to sign transactions (wallet app, SDK, etc.) — let them know upfront
+- For cross-chain swaps, near-cli is not needed (the `signingUrl` handles it)
+
+### 4. Determine which swap mode to use
+- **Native mode** (`--native`): Both source and destination tokens are on NEAR (`nep141:` assets). Fast (~1 sec), but requires on-chain NEAR transactions (wrapping, storage deposits, ft_transfer_call, withdrawals).
+- **Cross-chain mode** (default): Tokens move between different blockchains. Slower (minutes), but the user just opens a signing URL in their browser.
+- Some tokens on NEAR have `1cs_v1:` asset IDs — these require cross-chain mode even though they're on NEAR.
+- Use `near-intents tokens --chain near --search <symbol>` to check asset ID prefixes.
+
+### 5. Check token availability
+- Run `near-intents tokens --search <symbol>` to verify the tokens exist and note their asset IDs
+- If a token isn't found, tell the user — don't guess or assume
+
+### 6. Present the plan and get confirmation
+- Summarize: what swaps you'll do, what mode (native vs cross-chain), approximate fees, how many steps
+- For native swaps: mention wrapping, storage registration, withdrawal steps and their costs
+- Wait for the user to say yes before doing anything
+
 ## Setup & Authentication
 
 Authentication is via JWT bearer token, obtained from the Partner Dashboard at https://partners.near-intents.org/
@@ -32,14 +67,6 @@ Set your token (pick one):
 - Config file: `~/.near-intents.json` → `{"token": "<jwt>"}`
 
 **Without a token, swaps still work** but incur a platform fee. All commands function without authentication.
-
-### Check for existing NEAR wallets
-
-Before asking the user for their NEAR account, check for local near-cli credentials:
-- `~/.near-credentials/mainnet/` — contains `<account>.json` files for each account
-- The account name is the filename (e.g., `alice.near.json` → account is `alice.near`)
-
-If credentials exist, use that account as the default for `--sender`, `--recipient`, and `--refund-to`.
 
 ## Token Resolution
 
