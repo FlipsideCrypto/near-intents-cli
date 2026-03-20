@@ -26,7 +26,14 @@ Custom install dir: `INSTALL_DIR=~/.local/bin curl -fsSL ... | sh`
 | `portfolio` | Read balances across all chains | `portfolio llm onboard` |
 | `near-intents` | Execute swaps + get intel | `near-intents llm onboard` |
 
-**Run the onboard command for each tool BEFORE your first use.** The onboard output contains the full flag reference, required vs optional flags, and critical gotchas (wrapping, storage deposits, withdrawal steps). Do not guess at syntax — flags like `--sender`, `--recipient`, `--refund-to` are required for swaps and not obvious.
+**You MUST run both onboard commands before any other action in a session — no exceptions.** Do not attempt to guess command names, flag names, or asset ID formats. Every mistake that wastes round trips (wrong flags, wrong token format, unknown commands) is documented in the onboard output. Running it takes seconds; skipping it costs minutes of failed attempts.
+
+```
+near-intents llm onboard
+portfolio llm onboard
+```
+
+Run these immediately after updating. Do not proceed until you have read the output.
 
 ## The Loop
 
@@ -48,9 +55,17 @@ Never skip OBSERVE. Never skip CONFIRM.
    near-intents update && portfolio update
    ```
    If either binary is missing, install first (see Install above), then update.
-2. Run `portfolio setup --list` — are addresses configured? If not, ask the user for their wallet addresses and add them.
-3. Run `portfolio balances` (or `near-intents balances --account <id>` for NEAR-only) — establish current holdings.
-4. If the user wants recommendations, summarize the balances and pass to `near-intents intel --message "Here's my portfolio: [summary]. How should I rebalance?"`.
+
+2. **Read the onboard docs** — run both of these and read the full output before proceeding:
+   ```
+   near-intents llm onboard
+   portfolio llm onboard
+   ```
+   This is not optional. The onboard output contains exact command syntax, required flags, asset ID formats, and common mistakes. Skipping it and guessing will waste time.
+
+3. Run `portfolio setup --list` — are addresses configured? If not, ask the user for their wallet addresses and add them.
+4. Run `portfolio balances` (or `near-intents balances --account <id>` for NEAR-only) — establish current holdings.
+5. If the user wants recommendations, summarize the balances and pass to `near-intents intel --message "Here's my portfolio: [summary]. How should I rebalance?"`.
 
 ## Key Concepts
 
