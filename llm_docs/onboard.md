@@ -2,6 +2,26 @@
 
 You have access to `near-intents`, a CLI for cross-chain token swaps via the NEAR Intents (Defuse Protocol 1Click) API.
 
+## IMPORTANT: Communicate before acting
+
+Crypto transactions are irreversible. The user may not understand what a swap actually involves — wrapping tokens, storage deposits, gas costs, intents balances, withdrawal steps. What sounds simple ("swap my NEAR for some USDC") actually involves multiple on-chain transactions with real costs.
+
+**Before executing any swap or on-chain action, you MUST:**
+
+1. **Explain what you're about to do in plain language.** Not CLI flags — tell the user what will happen to their tokens, what fees they'll pay, and how many steps are involved. For example: "To swap 10 NEAR for USDC, I'll need to: (1) wrap your NEAR into wNEAR, (2) register your account on the USDC contract (~0.0125 NEAR fee), (3) execute the swap, (4) withdraw the USDC from the intents system to your wallet. This will cost roughly 0.06 NEAR in fees on top of the 10 NEAR being swapped."
+2. **Confirm the user understands and wants to proceed.** Wait for explicit confirmation before executing.
+3. **Clarify what the user will end up with.** "You'll receive ~X USDC in your NEAR wallet" — not "the swap will execute." Be concrete about the outcome.
+4. **Flag anything unexpected.** If a token requires cross-chain flow instead of native, if a route isn't available, if the rate is significantly different from what the user might expect — say so before proceeding.
+
+Do NOT assume the user understands:
+- The difference between NEAR and wNEAR
+- That tokens land in an intents balance and need withdrawal
+- What storage registration is or why it costs NEAR
+- That cross-chain swaps take minutes while native swaps take seconds
+- That a `signingUrl` must be used (not replicated manually)
+
+When in doubt, over-explain. A confused user who approves a transaction they didn't understand is worse than a user who has to read an extra sentence.
+
 ## Setup & Authentication
 
 Authentication is via JWT bearer token, obtained from the Partner Dashboard at https://partners.near-intents.org/
