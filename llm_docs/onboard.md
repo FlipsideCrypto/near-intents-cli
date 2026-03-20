@@ -57,6 +57,22 @@ When a user asks you to do something with swaps (e.g., "rebalance my portfolio",
 - For native swaps: mention wrapping, storage registration, withdrawal steps and their costs
 - Wait for the user to say yes before doing anything
 
+## Before Any Swap
+
+Before constructing a swap, establish what the user holds:
+
+1. Run `near-intents balances --account <id>` to see NEAR wallet + intents balances
+2. Intents balances are immediately swappable via `--native` mode
+3. Wallet balances need deposit steps first (wrap NEAR, storage registration, etc.)
+4. The output includes `assetId` fields that feed directly into `--from` / `--to` flags
+
+If the user's NEAR account ID is not known, ask for it before running balances. Common patterns: `username.near`, `username.tg` (Telegram-linked). Do not guess.
+
+For full cross-chain portfolio visibility, use the `portfolio` tool:
+```
+portfolio balances
+```
+
 ## Setup & Authentication
 
 Authentication is via JWT bearer token, obtained from the Partner Dashboard at https://partners.near-intents.org/
@@ -184,6 +200,17 @@ List/search supported tokens. Filtering is client-side.
 | `--search <term>` | Match on symbol, blockchain, or asset ID |
 
 Returns: `[{assetId, symbol, blockchain, decimals, price, contractAddress}, ...]`
+
+### `near-intents balances`
+Show NEAR wallet and intents balances for an account.
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--account` | Yes | NEAR account ID (e.g., `alice.near`) |
+
+Returns: `{totalUsd, chains: [{chain, address, totalUsd, tokens: [{symbol, balance, usd, contractAddress?, assetId?}]}]}`
+
+Chains returned: `near` (native + FTs) and `near-intents` (tokens deposited in intents.near).
 
 ### `near-intents quote`
 Dry-run quote — check rates without committing.
