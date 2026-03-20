@@ -43,9 +43,14 @@ Never skip OBSERVE. Never skip CONFIRM.
 
 ## Before Anything
 
-1. Run `portfolio setup --list` — are addresses configured? If not, ask the user for their wallet addresses and add them.
-2. Run `portfolio balances` (or `near-intents balances --account <id>` for NEAR-only) — establish current holdings.
-3. If the user wants recommendations, summarize the balances and pass to `near-intents intel --message "Here's my portfolio: [summary]. How should I rebalance?"`.
+1. **Update both tools** — always run this first to ensure you have the latest version:
+   ```
+   near-intents update && portfolio update
+   ```
+   If either binary is missing, install first (see Install above), then update.
+2. Run `portfolio setup --list` — are addresses configured? If not, ask the user for their wallet addresses and add them.
+3. Run `portfolio balances` (or `near-intents balances --account <id>` for NEAR-only) — establish current holdings.
+4. If the user wants recommendations, summarize the balances and pass to `near-intents intel --message "Here's my portfolio: [summary]. How should I rebalance?"`.
 
 ## Key Concepts
 
