@@ -2,6 +2,70 @@
 
 You have access to `near-intents`, a CLI for cross-chain token swaps via the NEAR Intents (Defuse Protocol 1Click) API.
 
+## Translating What the User Wants Into What NEAR Intents Can Do
+
+When someone says "rebalance my portfolio" or "swap my NEAR for ETH", they have no idea about wrapping, storage deposits, intents balances, signing URLs, or cross-chain routing. Your job is to bridge that gap — do the discovery work, then present a plain-language plan before touching anything.
+
+### Step 1: Check which of their assets are actually supported
+
+Not everything can be swapped. Before planning anything, check:
+
+```
+near-intents tokens --search <symbol>
+```
+
+For each asset the user holds, determine:
+- **`nep141:` asset ID found** → native mode is possible (fast, NEAR-only)
+- **`1cs_v1:` asset ID only** → cross-chain mode only, even though it's on NEAR
+- **Found on another chain** (ethereum, solana, etc.) → cross-chain swap, browser signing required
+- **Not found at all** → can't swap it — tell the user upfront, don't skip over it
+
+### Step 2: Map each holding to the simplest available path
+
+| What they have | Where it is | What needs to happen |
+|----------------|-------------|----------------------|
+| Raw NEAR | Wallet | Wrap to wNEAR first, then native swap |
+| wNEAR or nep141 token | Wallet | Check storage on destination, then native swap |
+| Any nep141 token | Intents balance | Native swap directly — fastest path, already in the engine |
+| ETH / SOL / BTC | Other chain | Cross-chain swap — user opens a browser signing URL |
+| 1cs_v1 token | NEAR wallet | Cross-chain mode even though it's on NEAR |
+| Unsupported token | Anywhere | Can't swap — tell the user |
+
+### Step 3: Present a plain-language plan before doing anything
+
+Don't start with CLI commands. Start with a summary the user can actually understand:
+
+> "Here's what I can do with your portfolio:
+>
+> **Fast swaps (1–2 seconds, fully automated):**
+> - Your 500 NEAR → ~450 USDC. I'll wrap the NEAR first, then swap. You'll end up with USDC in your NEAR wallet after a withdrawal step.
+>
+> **Slower swaps (5–15 min, requires browser):**
+> - Your 0.05 ETH on Ethereum → ~180 NEAR. I'll generate a signing link you'll need to open to authorize the transfer.
+>
+> **Can't swap:**
+> - Your XYZ token isn't listed on NEAR Intents — I'll leave that alone.
+>
+> Total estimated fees: ~0.06 NEAR + gas. Want me to proceed?"
+
+Key things to include in your summary:
+- Which swaps are **fast/automated** (native) vs **require browser action** (cross-chain)
+- What they'll **actually end up with** — token, chain, and where (wallet vs intents balance)
+- Any **assets you can't touch** and why
+- A **rough fee estimate**
+- An explicit **ask for confirmation** before doing anything
+
+### What NEAR Intents cannot do
+
+Be upfront about limitations rather than discovering them mid-execution:
+- **No fiat on/off ramps** — crypto to crypto only
+- **No unsupported tokens** — if it's not in `near-intents tokens`, it can't be swapped
+- **No cross-chain withdrawal** — after a native swap, tokens land in the NEAR intents balance. Getting them to Ethereum requires a separate cross-chain swap.
+- **No guaranteed rates** — quotes expire, slippage applies. The rate at confirmation may differ slightly from the rate at execution.
+- **Cross-chain swaps need the user's browser** — you can't fully automate them. The user must open the `signingUrl`.
+
+---
+
 ## IMPORTANT: Communicate before acting
 
 Crypto transactions are irreversible. The user may not understand what a swap actually involves — wrapping tokens, storage deposits, gas costs, intents balances, withdrawal steps. What sounds simple ("swap my NEAR for some USDC") actually involves multiple on-chain transactions with real costs.
