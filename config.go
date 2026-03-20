@@ -14,9 +14,11 @@ const (
 )
 
 type Config struct {
-	Token          string `json:"token,omitempty"`
-	APIEndpoint    string `json:"api_endpoint,omitempty"`
-	SigningBaseURL string `json:"signing_base_url,omitempty"`
+	Token               string `json:"token,omitempty"`
+	APIEndpoint         string `json:"api_endpoint,omitempty"`
+	SigningBaseURL      string `json:"signing_base_url,omitempty"`
+	FlipsideAPIKey      string `json:"flipside_api_key,omitempty"`
+	FlipsideAPIEndpoint string `json:"flipside_api_endpoint,omitempty"`
 }
 
 func loadConfig() *Config {

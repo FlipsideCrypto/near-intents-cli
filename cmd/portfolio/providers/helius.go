@@ -21,8 +21,8 @@ type heliusRequest struct {
 }
 
 type heliusAssetsByOwnerParams struct {
-	OwnerAddress   string                    `json:"ownerAddress"`
-	DisplayOptions heliusDisplayOptions      `json:"displayOptions"`
+	OwnerAddress   string               `json:"ownerAddress"`
+	DisplayOptions heliusDisplayOptions `json:"displayOptions"`
 }
 
 type heliusDisplayOptions struct {
@@ -42,9 +42,9 @@ type heliusResult struct {
 }
 
 type heliusAsset struct {
-	Interface string           `json:"interface"`
-	Content   heliusContent    `json:"content"`
-	TokenInfo heliusTokenInfo  `json:"token_info"`
+	Interface string          `json:"interface"`
+	Content   heliusContent   `json:"content"`
+	TokenInfo heliusTokenInfo `json:"token_info"`
 }
 
 type heliusContent struct {
@@ -56,10 +56,10 @@ type heliusMetadata struct {
 }
 
 type heliusTokenInfo struct {
-	Symbol    string           `json:"symbol"`
-	Balance   int64            `json:"balance"`
-	Decimals  int              `json:"decimals"`
-	PriceInfo heliusPriceInfo  `json:"price_info"`
+	Symbol    string          `json:"symbol"`
+	Balance   int64           `json:"balance"`
+	Decimals  int             `json:"decimals"`
+	PriceInfo heliusPriceInfo `json:"price_info"`
 }
 
 type heliusPriceInfo struct {
