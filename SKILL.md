@@ -69,11 +69,12 @@ Never skip OBSERVE. Never skip CONFIRM.
 
 ## Key Concepts
 
-- **intents vs wallet**: Tokens in `near-intents` chain are immediately swappable via native mode. Tokens in wallet need deposit steps first (wrapping, storage registration).
+- **Signing URL is the default.** Most swaps should use the cross-chain signing URL flow — user gets a link, opens it, connects wallet, signs. No near-cli needed, no wrapping, no storage deposits. Only use native mode if the user explicitly asks for it.
+- **Ask the user, don't assume.** Present both options (signing URL vs native CLI) and let them choose. Don't probe for near-cli or check `~/.near-credentials/` unless the user wants native mode.
 - **`assetId` fields** in balance output feed directly into `near-intents swap --from` / `--to`.
-- **Two swap modes**: native (NEAR-only, fast, needs near-cli) and cross-chain (any chain, uses signing URL in browser).
 - **Flipside intel** is for analytical recommendations ("how should I rebalance?"), not balance lookups (use `portfolio balances` for that).
-- **No withdraw CLI command.** After native swaps, tokens land in intents.near. Withdraw via `ft_withdraw` on `intents.near` using near-cli directly. See onboard docs for exact syntax.
+- **intents vs wallet**: Tokens in `near-intents` chain are immediately swappable. Tokens in wallet may need extra steps depending on mode.
+- **No withdraw CLI command.** After native swaps, tokens land in intents.near. Withdraw via `ft_withdraw` on `intents.near` using near-cli directly. See onboard docs for exact syntax. (Only relevant in native mode.)
 
 ## Common Mistakes
 

@@ -132,7 +132,7 @@ When in doubt, over-explain. A confused user who approves a transaction they did
 
 ## Before you start: Discovery checklist
 
-When a user asks you to do something with swaps (e.g., "rebalance my portfolio", "swap some NEAR for USDC", "buy some ETH"), don't jump into execution. Walk through these steps first:
+When a user asks you to do something with swaps (e.g., "rebalance my portfolio", "swap some NEAR for USDC", "buy some ETH"), don't jump into execution. Walk through these steps with the user first:
 
 ### 1. Understand what they actually want
 - What tokens do they want to end up with? In what amounts or proportions?
@@ -140,46 +140,36 @@ When a user asks you to do something with swaps (e.g., "rebalance my portfolio",
 - Do they want tokens in their NEAR wallet, or on another chain?
 - If they say "rebalance" — into what? Equal weights? Specific allocations? Ask.
 
-### 2. Identify the user's NEAR account
-- Check `~/.near-credentials/mainnet/` for existing near-cli credentials — files are named `<account>.json`
-- If found, confirm with the user: "I see a NEAR account `alice.near` on this machine — is that the one you want to use?"
-- If not found, ask the user for their NEAR account ID
+### 2. Establish what they hold
+- Run `near-intents balances --account <id>` for NEAR wallet + intents balances
+- Or `portfolio balances` for full cross-chain view
+- If the user's NEAR account ID is not known, ask for it. Common patterns: `username.near`, `username.tg` (Telegram-linked). Do not guess.
+- The output includes `assetId` fields that feed directly into `--from` / `--to` flags
 
-### 3. Check if near-cli is available
-- For native swaps, the user needs to sign NEAR transactions. Check if `near` CLI is installed: `which near`
-- If not installed, the user will need another way to sign transactions (wallet app, SDK, etc.) — let them know upfront
-- For cross-chain swaps, near-cli is not needed (the `signingUrl` handles it)
-
-### 4. Determine which swap mode to use
-- **Native mode** (`--native`): Both source and destination tokens are on NEAR (`nep141:` assets). Fast (~1 sec), but requires on-chain NEAR transactions (wrapping, storage deposits, ft_transfer_call, withdrawals).
-- **Cross-chain mode** (default): Tokens move between different blockchains. Slower (minutes), but the user just opens a signing URL in their browser.
-- Some tokens on NEAR have `1cs_v1:` asset IDs — these require cross-chain mode even though they're on NEAR.
-- Use `near-intents tokens --chain near --search <symbol>` to check asset ID prefixes.
-
-### 5. Check token availability
-- Run `near-intents tokens --search <symbol>` to verify the tokens exist and note their asset IDs
+### 3. Check token availability
+- Run `near-intents tokens --search <symbol>` to verify the tokens exist (search **all chains** first, don't narrow with `--chain`)
 - If a token isn't found, tell the user — don't guess or assume
 
-### 6. Present the plan and get confirmation
-- Summarize: what swaps you'll do, what mode (native vs cross-chain), approximate fees, how many steps
-- For native swaps: mention wrapping, storage registration, withdrawal steps and their costs
+### 4. Ask the user how they want to sign the swap
+
+There are two modes. **Present both and let the user choose.** Do NOT silently pick one.
+
+> "There are two ways to do this swap:
+>
+> 1. **Signing URL (recommended)** — I'll generate a link. You open it in your browser, connect your wallet, and sign. Takes about 5–15 minutes. No setup needed.
+>
+> 2. **Native CLI mode** — Faster (~1 second), but requires `near` CLI installed with credentials on this machine. Involves extra steps: wrapping NEAR, storage deposits, withdrawals. More hands-off for you but more moving parts.
+>
+> Which do you prefer?"
+
+**Default to signing URL** unless the user explicitly asks for native mode. Do NOT check for near-cli credentials, probe for `~/.near-credentials/`, or suggest native mode unless the user brings it up. Most users just want a link.
+
+### 5. Present the plan and get confirmation
+- Summarize: what swaps you'll do, approximate fees, how many steps
+- Confirm the swap direction: "You're sending [A] and receiving [B] at [address] — correct?"
+- For signing URL flow: mention they'll need to open a link in their browser
+- For native swaps (only if user chose this): mention wrapping, storage registration, withdrawal steps and their costs
 - Wait for the user to say yes before doing anything
-
-## Before Any Swap
-
-Before constructing a swap, establish what the user holds:
-
-1. Run `near-intents balances --account <id>` to see NEAR wallet + intents balances
-2. Intents balances are immediately swappable via `--native` mode
-3. Wallet balances need deposit steps first (wrap NEAR, storage registration, etc.)
-4. The output includes `assetId` fields that feed directly into `--from` / `--to` flags
-
-If the user's NEAR account ID is not known, ask for it before running balances. Common patterns: `username.near`, `username.tg` (Telegram-linked). Do not guess.
-
-For full cross-chain portfolio visibility, use the `portfolio` tool:
-```
-portfolio balances
-```
 
 ## Setup & Authentication
 
@@ -208,9 +198,9 @@ Two ways to specify tokens:
   - Bridged tokens: `nep141:{chain}-{contractAddress}.omft.near`
 - **`1cs_v1:` prefix** — tokens that require the cross-chain 1Click swap flow. These do NOT work with `--native`. Example: `1cs_v1:near:nep141:zec.omft.near` (ZEC). If you see a `1cs_v1:` asset ID, you must use the standard cross-chain flow (no `--native` flag).
 
-## Cross-chain Swap Workflow
+## Swap Workflow (default — signing URL)
 
-Follow these steps for swaps between different blockchains:
+This is the standard flow for most swaps. The user gets a signing URL they open in their browser — no CLI signing, no near-cli, no wrapping or withdrawal steps.
 
 ### Step 1: Resolve tokens
 ```
@@ -252,7 +242,9 @@ near-intents status --deposit-address <addr>
 ```
 Repeat until you get a terminal status.
 
-## Native Mode (NEAR-only swaps)
+## Native Mode (advanced, opt-in only)
+
+**Only use native mode if the user explicitly asked for it.** Do not default to it, do not suggest it unprompted, do not check for near-cli credentials unless the user wants CLI-based swaps.
 
 Add `--native` to `quote` or `swap` to swap wrapped/bridged assets already on NEAR. These swaps finalize in ~1 second. Use this when both tokens are `nep141:` assets on the `near` blockchain.
 
