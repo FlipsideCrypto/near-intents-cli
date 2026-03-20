@@ -158,34 +158,58 @@ Add `--native` to `quote` or `swap` to swap wrapped/bridged assets already on NE
 
 ### Native swap end-to-end (starting from raw NEAR)
 
+**near-cli command structure:** all on-chain calls end with `sign-as <account> network-config mainnet sign-with-keychain send`. The `sign-with-keychain` picks up credentials from `~/.near-credentials/mainnet/`. The `send` at the end is what makes the call non-interactive — omitting it causes near-cli to prompt for confirmation, which fails in non-TTY agent environments.
+
 ```
-# 0. Check for existing NEAR account in ~/.near-credentials/mainnet/
+# 0. Check for existing NEAR account credentials
+ls ~/.near-credentials/mainnet/
+# Files are named <account>.json — confirm with the user which account to use
 
-# 1. Wrap NEAR → wNEAR (on-chain: near_deposit on wrap.near)
-#    Attach the NEAR amount to swap. First call also registers storage (~0.00125 NEAR).
+# 1. Wrap NEAR → wNEAR
+#    Replace 10 with the amount to wrap. First call also registers storage (~0.00125 NEAR).
+near contract call-function as-transaction wrap.near near_deposit \
+  json-args '{}' \
+  prepaid-gas '30.0 Tgas' attached-deposit '10 NEAR' \
+  sign-as alice.near network-config mainnet sign-with-keychain send
 
-# 2. Register storage on destination token contract (on-chain: storage_deposit, ~0.0125 NEAR)
+# 2. Register storage on destination token contract (~0.0125 NEAR, one-time per token)
+near contract call-function as-transaction usdc.omft.near storage_deposit \
+  json-args '{"account_id": "alice.near"}' \
+  prepaid-gas '30.0 Tgas' attached-deposit '0.0125 NEAR' \
+  sign-as alice.near network-config mainnet sign-with-keychain send
 
 # 3. Preview the rate
 near-intents quote --native --from wNEAR --to USDC --amount 10
 
-# 4. Execute the swap
+# 4. Execute the swap — get back a nearTransaction object
 near-intents swap --native --from wNEAR --to USDC --amount 10 \
   --recipient alice.near --refund-to alice.near --sender alice.near
+# Response includes: depositAddress, nearTransaction.receiverId, nearTransaction.actions[].ft_transfer_call
 
-# 5. Execute the nearTransaction on NEAR (on-chain: ft_transfer_call from the response)
+# 5. Submit the ft_transfer_call from the nearTransaction response
+#    Use the exact receiver_id, amount, and msg from the swap response — do not modify them
+near contract call-function as-transaction wrap.near ft_transfer_call \
+  json-args '{"receiver_id":"intents.near","amount":"<amount_from_response>","msg":"<msg_from_response>"}' \
+  prepaid-gas '100.0 Tgas' attached-deposit '1 yoctoNEAR' \
+  sign-as alice.near network-config mainnet sign-with-keychain send
 
-# 6. Submit tx hash
+# 6. Submit tx hash to speed up processing
 near-intents submit-tx --deposit-address <addr> --tx-hash <hash> --near-sender alice.near
 
 # 7. Poll status until SUCCESS
 near-intents status --deposit-address <addr>
 
-# 8. Withdraw output tokens from intents (on-chain: ft_withdraw on intents.near)
-#    The "token" field is the bare contract ID (strip nep141: prefix), NOT the full asset ID.
+# 8. Withdraw output tokens from intents.near to wallet
+#    Strip the nep141: prefix from the token contract ID
+near contract call-function as-transaction intents.near ft_withdraw \
+  json-args '{"token":"usdc.omft.near","amount":"<raw_amount>","receiver_id":"alice.near"}' \
+  prepaid-gas '100.0 Tgas' attached-deposit '1 yoctoNEAR' \
+  sign-as alice.near network-config mainnet sign-with-keychain send
 
 # 9. If chaining another swap: repeat from step 2
 ```
+
+**Executing multiple swaps:** Run ft_transfer_call transactions sequentially, not in parallel. They share the same signer nonce — parallel execution will cause nonce conflicts and failed transactions.
 
 For full details on native swaps, wrapped assets, ft_transfer_call, withdrawals, and chaining, run: `near-intents llm topic native-swaps`
 
@@ -323,6 +347,29 @@ or on failure:
 
 Use `--pretty` for indented JSON output. Default is compact JSON for machine consumption.
 
+## Swapping a Full Balance
+
+**This will fail if you pass the full human-readable balance as `--amount`.** The CLI converts your decimal amount to raw integer units, and rounding means the resulting raw amount will exceed the actual on-chain balance by a few yocto — the transaction will be rejected with "not enough balance" or "Insufficient sender balance".
+
+Before swapping a full token balance:
+
+1. Query the exact raw balance on-chain:
+```
+near contract call-function as-read-only wrap.near ft_balance_of \
+  json-args '{"account_id": "alice.near"}' \
+  network-config mainnet now
+# Returns: "895665650336104516539012"
+```
+
+2. Convert to human-readable and **round down** (truncate, don't round):
+   - Raw: `895665650336104516539012`
+   - Decimals: 24 (wNEAR)
+   - Human: `0.895665` (truncate to 6 decimal places to be safe)
+
+3. Use the truncated amount: `--amount 0.895665`
+
+This applies to any FT balance swap — wNEAR, USDC, bridged tokens. When in doubt, subtract a small buffer (e.g., 0.0001) from the human-readable amount.
+
 ## Common Agent Mistakes
 
 These errors were observed during real agent testing. Read these BEFORE attempting swaps.
@@ -334,6 +381,15 @@ These errors were observed during real agent testing. Read these BEFORE attempti
 | `--account` | `--sender` | NEAR account signing the transaction (swap --native) |
 | `--amount-side from` | (drop it) | `--swap-type EXACT_INPUT` is the default, no extra flag needed |
 | `--correlation-id` | `--deposit-address` | Use the deposit address from swap output for status checks |
+
+### near-cli command structure mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| `network-config mainnet send` | Must be `network-config mainnet sign-with-keychain send` — missing the signing method |
+| `sign-with-keychain` without `send` | Causes near-cli to prompt interactively, which fails in non-TTY shells. Always end with `send` |
+| Parallel ft_transfer_call transactions | Run sequentially — they share the signer nonce and will conflict if run in parallel |
+| Swapping the full human-readable balance | Query `ft_balance_of` first and truncate the result — see "Swapping a Full Balance" above |
 
 ### Missing required swap flags
 
@@ -352,7 +408,7 @@ There is no `near-intents withdraw`. After a native swap, output tokens are insi
 near contract call-function as-transaction intents.near ft_withdraw \
   json-args '{"token":"wrap.near","amount":"<raw_amount>","receiver_id":"alice.near"}' \
   prepaid-gas '100.0 Tgas' attached-deposit '1 yoctoNEAR' \
-  sign-as alice.near network-config mainnet send
+  sign-as alice.near network-config mainnet sign-with-keychain send
 ```
 
 **Critical details:**
