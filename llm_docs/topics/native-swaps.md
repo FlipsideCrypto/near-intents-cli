@@ -170,6 +170,22 @@ To derive the contract ID from an asset ID: strip the `nep141:` prefix. For exam
 - `nep141:wrap.near` → `token: "wrap.near"`
 - `nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near` → `token: "eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near"`
 
+## Token compatibility
+
+**Only `nep141:` tokens work with `--native` mode.** Some tokens on the `near` blockchain have a `1cs_v1:` prefix in their asset ID (e.g., `1cs_v1:near:nep141:zec.omft.near` for ZEC). These require the cross-chain 1Click swap flow and will NOT work with `--native`.
+
+Before using `--native`, check the asset ID returned by `near-intents tokens`. If it starts with `nep141:`, native mode works. If it starts with `1cs_v1:`, use the standard cross-chain flow.
+
+## NEAR reserve budget
+
+Native swaps consume NEAR for gas, storage registration, and wrapping. Budget accordingly:
+
+**Formula:** reserve = 0.5 NEAR + (0.0125 × number of new destination tokens) + (0.01 × number of transactions)
+
+Example: swapping into 3 new tokens with ~6 transactions total = 0.5 + (0.0125 × 3) + (0.01 × 6) = 0.5975 NEAR
+
+This is in addition to the NEAR being swapped. Always check the account balance before starting.
+
 ## When to use native vs cross-chain
 
 **Use native (`--native`) when:**
@@ -182,6 +198,7 @@ To derive the contract ID from an asset ID: strip the `nep141:` prefix. For exam
 - Tokens are on different blockchains (e.g., ETH on Ethereum → wNEAR on NEAR)
 - The source token is not on NEAR
 - User needs to bridge tokens into or out of NEAR
+- The token has a `1cs_v1:` asset ID prefix (even if on the `near` blockchain)
 
 ## Complete native swap workflow
 

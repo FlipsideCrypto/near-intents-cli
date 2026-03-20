@@ -13,9 +13,33 @@ Set your token (pick one):
 
 **Without a token, swaps still work** but incur a platform fee. All commands function without authentication.
 
-## Swap Workflow
+### Check for existing NEAR wallets
 
-Follow these steps in order for every swap:
+Before asking the user for their NEAR account, check for local near-cli credentials:
+- `~/.near-credentials/mainnet/` — contains `<account>.json` files for each account
+- The account name is the filename (e.g., `alice.near.json` → account is `alice.near`)
+
+If credentials exist, use that account as the default for `--sender`, `--recipient`, and `--refund-to`.
+
+## Token Resolution
+
+Two ways to specify tokens:
+
+1. **Asset ID** (exact): `--from nep141:wrap.near`
+2. **Symbol + chain** (resolved): `--from USDC --from-chain ethereum`
+
+**Never construct asset IDs manually.** Always use `near-intents tokens` to find the correct asset ID.
+
+### Asset ID formats
+
+- **`nep141:` prefix** — standard NEAR NEP-141 tokens. These work with `--native` mode.
+  - NEAR native: `nep141:wrap.near`
+  - Bridged tokens: `nep141:{chain}-{contractAddress}.omft.near`
+- **`1cs_v1:` prefix** — tokens that require the cross-chain 1Click swap flow. These do NOT work with `--native`. Example: `1cs_v1:near:nep141:zec.omft.near` (ZEC). If you see a `1cs_v1:` asset ID, you must use the standard cross-chain flow (no `--native` flag).
+
+## Cross-chain Swap Workflow
+
+Follow these steps for swaps between different blockchains:
 
 ### Step 1: Resolve tokens
 ```
@@ -38,6 +62,9 @@ Returns:
 - `signingUrl` — URL for the user to connect wallet and sign the deposit
 
 ### Step 4: User signs the deposit
+
+**WARNING: The user MUST use the `signingUrl` to sign and submit the deposit. Do NOT manually construct or replicate the deposit transaction (e.g., via ft_transfer_call or a direct transfer to the deposit address). The signing page handles chain-specific deposit logic. Manually sending tokens to the deposit address will result in stuck funds until the deadline expires.**
+
 Direct the user to the `signingUrl`. They will:
 1. Connect their wallet (MetaMask, Phantom, NEAR Wallet, etc.)
 2. Sign a standard transfer to the deposit address
@@ -56,9 +83,48 @@ Repeat until you get a terminal status.
 
 ## Native Mode (NEAR-only swaps)
 
-Add `--native` to `quote` or `swap` to swap tokens already inside the NEAR Intents system (wrapped/bridged assets on NEAR). These swaps finalize in ~1 second. Use this when both tokens are on the `near` blockchain. The swap output includes a `nearTransaction` object instead of a `signingUrl`.
+Add `--native` to `quote` or `swap` to swap wrapped/bridged assets already on NEAR. These swaps finalize in ~1 second. Use this when both tokens are `nep141:` assets on the `near` blockchain.
 
-For full details on native swaps, wrapped assets, and the `ft_transfer_call` mechanism, run: `near-intents llm topic native-swaps`
+**Key things to know before using native mode:**
+
+1. **Raw NEAR must be wrapped first.** Users typically have NEAR, not wNEAR. You must wrap it via `near_deposit` on `wrap.near` before swapping.
+2. **Swap output lands in the intents balance, NOT the wallet.** After a native swap, output tokens are inside `intents.near`, not in the token's FT contract. You must call `ft_withdraw` on `intents.near` to move them out.
+3. **Storage registration required.** Before receiving or withdrawing any NEP-141 token, the account needs `storage_deposit` on that token's contract (~0.0125 NEAR each, once per token).
+4. **Only `nep141:` tokens work with `--native`.** Tokens with `1cs_v1:` prefix require the cross-chain flow.
+5. **Budget NEAR for gas and storage.** Reserve = 0.5 NEAR + (0.0125 × number of new tokens) + (0.01 × number of transactions).
+
+### Native swap end-to-end (starting from raw NEAR)
+
+```
+# 0. Check for existing NEAR account in ~/.near-credentials/mainnet/
+
+# 1. Wrap NEAR → wNEAR (on-chain: near_deposit on wrap.near)
+#    Attach the NEAR amount to swap. First call also registers storage (~0.00125 NEAR).
+
+# 2. Register storage on destination token contract (on-chain: storage_deposit, ~0.0125 NEAR)
+
+# 3. Preview the rate
+near-intents quote --native --from wNEAR --to USDC --amount 10
+
+# 4. Execute the swap
+near-intents swap --native --from wNEAR --to USDC --amount 10 \
+  --recipient alice.near --refund-to alice.near --sender alice.near
+
+# 5. Execute the nearTransaction on NEAR (on-chain: ft_transfer_call from the response)
+
+# 6. Submit tx hash
+near-intents submit-tx --deposit-address <addr> --tx-hash <hash> --near-sender alice.near
+
+# 7. Poll status until SUCCESS
+near-intents status --deposit-address <addr>
+
+# 8. Withdraw output tokens from intents (on-chain: ft_withdraw on intents.near)
+#    The "token" field is the bare contract ID (strip nep141: prefix), NOT the full asset ID.
+
+# 9. If chaining another swap: repeat from step 2
+```
+
+For full details on native swaps, wrapped assets, ft_transfer_call, withdrawals, and chaining, run: `near-intents llm topic native-swaps`
 
 ## Commands Reference
 
@@ -88,10 +154,10 @@ Dry-run quote — check rates without committing.
 | `--refund-to` | No | — | Optional for quote |
 | `--app-fee` | No | — | Partner fee in basis points |
 | `--fee-recipient` | No | — | NEAR address for partner fees |
-| `--native` | No | false | Use NEAR-native intents mode (both tokens must be on NEAR) |
+| `--native` | No | false | Use NEAR-native intents mode (both tokens must be on NEAR, nep141: only) |
 
 ### `near-intents swap`
-Execute swap — generates deposit address and signing URL.
+Execute swap — generates deposit address and signing URL (or nearTransaction in native mode).
 
 All flags from `quote`, plus:
 
@@ -121,19 +187,6 @@ Check swap progress. One-shot check (you handle polling).
 | `--deposit-address` | Yes | Deposit address to check |
 | `--deposit-memo` | No | Deposit memo (Stellar only) |
 
-## Token Resolution
-
-Two ways to specify tokens:
-
-1. **Asset ID** (exact): `--from nep141:wrap.near`
-2. **Symbol + chain** (resolved): `--from USDC --from-chain ethereum`
-
-**Never construct asset IDs manually.** Always use `near-intents tokens` to find the correct asset ID.
-
-Common asset ID patterns:
-- NEAR native: `nep141:wrap.near`
-- Bridged tokens: `nep141:{chain}-{contractAddress}.omft.near`
-
 ## Status States
 
 | Status | Terminal? | Meaning |
@@ -152,6 +205,7 @@ Common asset ID patterns:
 - **Deposit address expired**: Run `swap` again to get a new deposit address.
 - **Incomplete deposit**: Funds will be automatically refunded to the `--refund-to` address.
 - **Status stuck on PROCESSING**: Keep polling — cross-chain swaps can take several minutes.
+- **Funds stuck after manual deposit**: If you manually sent tokens to a deposit address instead of using the `signingUrl`, funds are locked until the deadline expires and are then refunded.
 
 ## Portfolio Intelligence
 
@@ -174,22 +228,6 @@ Send a natural language message to a Flipside AI agent. The agent can look up wa
 | `--flipside-api-key` | Yes (if not in env/config) | — | Flipside API key |
 | `--agent` | No | `trading_agent` | Flipside agent to query |
 
-### Example: Portfolio Rebalancing
-
-```bash
-# Ask the agent to analyze wallets and suggest rebalancing
-near-intents intel --message "I have these wallets:
-- 0xABC123 on ethereum
-- alice.near on near
-- 7xKP... on solana
-Analyze my balances and suggest how to rebalance evenly across stablecoins."
-
-# The response includes the agent's analysis and recommendations.
-# Use the recommendations to execute swaps:
-near-intents swap --from USDC --from-chain ethereum --to USDT --to-chain near --amount 500 \
-  --recipient alice.near --refund-to 0xABC123
-```
-
 ### Intel → Swap Workflow
 
 1. Use `intel` to get portfolio analysis and rebalancing recommendations
@@ -210,29 +248,6 @@ or on failure:
 ```
 
 Use `--pretty` for indented JSON output. Default is compact JSON for machine consumption.
-
-## Example: Swap 10 USDC (Ethereum) → wNEAR
-
-```bash
-# 1. Find tokens
-near-intents tokens --search USDC --chain ethereum
-near-intents tokens --search wNEAR --chain near
-
-# 2. Check the rate
-near-intents quote --from USDC --from-chain ethereum --to wNEAR --to-chain near --amount 10
-
-# 3. Execute swap
-near-intents swap --from USDC --from-chain ethereum --to wNEAR --to-chain near --amount 10 \
-  --recipient alice.near --refund-to 0xYourEthAddress
-
-# 4. (User signs at the signingUrl from the response)
-
-# 5. Submit tx hash
-near-intents submit-tx --deposit-address <addr> --tx-hash <hash>
-
-# 6. Check status
-near-intents status --deposit-address <addr>
-```
 
 ## Deep-dive topics
 
