@@ -79,9 +79,16 @@ portfolio setup --add --chain bitcoin --address bc1q...
 portfolio balances --pretty
 ```
 
-## Agent integration (SKILL.md)
+## Agent integration (skill)
 
-This repo includes a `SKILL.md` that teaches LLM agents how to orchestrate both tools. An agent using this skill follows the loop:
+This repo includes an [agent skill](https://agentskills.io) at `skills/near-intents-trading/` that teaches LLM agents how to orchestrate both tools.
+
+Install in Claude Code:
+```bash
+claude skills add github.com/FlipsideCrypto/near-intents-cli/skills/near-intents-trading
+```
+
+The skill follows the loop:
 
 ```
 OBSERVE  → portfolio balances / near-intents balances

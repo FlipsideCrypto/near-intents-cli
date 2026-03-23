@@ -2,7 +2,7 @@
 name: near-intents-trading
 description: Use when user asks about crypto trading, swaps, portfolio rebalancing, token balances, or managing holdings across NEAR, Ethereum, Solana, Bitcoin, or other chains. Triggers on keywords like swap, rebalance, portfolio, balance, holdings, trade, DeFi.
 metadata:
-  version: "0.1.8"
+  version: "0.1.9"
 ---
 
 # NEAR Intents Trading
