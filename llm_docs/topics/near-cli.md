@@ -34,6 +34,18 @@ Does the user have a NEAR account with keys in near-cli-rs?
     └── near-cli-rs NOT available → Direct to web wallet creation
 ```
 
+## Installation
+
+```bash
+# Primary — reliable, cross-platform
+npm install -g near-cli-rs
+
+# Fallback — requires Rust toolchain
+cargo install near-cli-rs
+```
+
+⚠️ **`brew install near-cli-rs` does NOT work.** The Homebrew formula does not exist.
+
 ## Detection & Setup
 
 Check if near-cli-rs is installed and ready:

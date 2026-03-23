@@ -2,7 +2,7 @@
 name: near-intents-trading
 description: Use when user asks about crypto trading, swaps, portfolio rebalancing, token balances, or managing holdings across NEAR, Ethereum, Solana, Bitcoin, or other chains. Triggers on keywords like swap, rebalance, portfolio, balance, holdings, trade, DeFi.
 metadata:
-  version: "0.1.7"
+  version: "0.1.8"
 ---
 
 # NEAR Intents Trading
@@ -69,6 +69,31 @@ Never skip OBSERVE. Never skip CONFIRM.
 4. Run `portfolio balances` (or `near-intents balances --account <id>` for NEAR-only) — establish current holdings.
 5. If the user wants recommendations, summarize the balances and pass to `near-intents intel --message "Here's my portfolio: [summary]. How should I rebalance?"`.
 
+## New User Detection
+
+Run `portfolio setup --list` at the start of every session. If it's empty:
+
+1. Ask: "What chains do you hold crypto on?" and "Do you have a NEAR account?"
+2. No NEAR account → run `near-intents llm topic new-account` and follow it
+3. No NEAR account, no other crypto → they need an exchange first
+4. Add all addresses: `portfolio setup --add --chain <near|evm|solana|bitcoin> --address <addr>`
+5. Collect API keys upfront: Flipside (`~/.near-intents.json`), Ankr (`~/.portfolio.json`)
+6. Verify: `portfolio balances` should return data before starting any swaps
+
+Do setup upfront — discovering missing config mid-swap wastes time.
+
+## Command Quick Reference
+
+| Command | Required flags | Common optional flags |
+|---------|---------------|----------------------|
+| `tokens` | — | `--search <term>`, `--chain <chain>` |
+| `balances` | `--account <near_id>` | `--pretty` |
+| `quote` | `--from`, `--to`, `--amount` | `--from-chain`, `--to-chain`, `--native`, `--slippage` |
+| `swap` | `--from`, `--to`, `--amount`, `--recipient`, `--refund-to` | `--from-chain`, `--to-chain`, `--native`, `--sender` (required with --native), `--deadline` |
+| `submit-tx` | `--deposit-address`, `--tx-hash` | `--near-sender` |
+| `status` | `--deposit-address` | `--deposit-memo` |
+| `intel` | `--message "<text>"` | `--flipside-api-key`, `--agent` |
+
 ## Key Concepts
 
 - **Signing URL is the default.** Most swaps should use the cross-chain signing URL flow — user gets a link, opens it, connects wallet, signs. No near-cli needed, no wrapping, no storage deposits. Only use native mode if the user explicitly asks for it.
@@ -95,3 +120,9 @@ Never skip OBSERVE. Never skip CONFIRM.
 | Defaulting to native swap mode | Default to cross-chain (signingUrl) unless user confirms near-cli is set up |
 | Quoting cross-chain swap without refund address | For non-NEAR source chains, ask for a refund address on that chain before calling swap |
 | Trying bridged token before native chain | Try native chain version first (BTC on bitcoin > wBTC on NEAR). Fall back if quote fails. |
+| `swap --refund <addr>` | Flag is `--refund-to`, not `--refund` |
+| `status --correlation-id <id>` | Flag is `--deposit-address`, not `--correlation-id` |
+| `intel --account <acct>` | Intel has no `--account` flag — pass account context inside `--message` |
+| Native swap: missing deposit address storage registration | After getting the deposit address, register it on the token contract (`storage_deposit`) before ft_transfer_call — see `llm topic native-swaps` |
+| Suggesting `brew install near-cli-rs` | That formula doesn't exist. Use `npm install -g near-cli-rs` |
+| Assuming new user already has a NEAR account | Check `portfolio setup --list` first — if empty, run new user detection flow |

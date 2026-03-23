@@ -140,6 +140,32 @@ When a user asks you to do something with swaps (e.g., "rebalance my portfolio",
 - Do they want tokens in their NEAR wallet, or on another chain?
 - If they say "rebalance" — into what? Equal weights? Specific allocations? Ask.
 
+### 1b. New user detection — run this before anything else
+
+```bash
+portfolio setup --list
+```
+
+If the result is empty, this is a new user. Guide them through setup before attempting any swaps:
+
+```
+"Before we get to swaps, let's make sure you're set up. A few quick questions:
+1. What chains do you hold crypto on? (NEAR, Ethereum/Base/Arbitrum, Solana, Bitcoin, other?)
+2. Do you have a NEAR account already?"
+```
+
+Branch:
+- **Has NEAR account** → add it with `portfolio setup --add --chain near --address <id>`, then continue
+- **No NEAR account, has EVM/SOL/BTC** → run `near-intents llm topic new-account` and follow the guide
+- **No NEAR account, no crypto** → they need to acquire NEAR from an exchange first; can't swap from nothing
+
+Also check:
+- **EVM address?** → `portfolio setup --add --chain evm --address 0x...`
+- **Flipside API key for intel?** → add to `~/.near-intents.json` as `"flipside_api_key": "<key>"` (get at flipsidecrypto.xyz)
+- **Ankr API key for EVM balances?** → add to `~/.portfolio.json` as `"ankr_api_key": "<key>"`
+
+Do this setup upfront — discovering missing config mid-swap breaks momentum.
+
 ### 2. Establish what they hold
 - Run `near-intents balances --account <id>` for NEAR wallet + intents balances
 - Or `portfolio balances` for full cross-chain view

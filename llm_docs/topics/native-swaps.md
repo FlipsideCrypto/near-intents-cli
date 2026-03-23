@@ -200,36 +200,139 @@ This is in addition to the NEAR being swapped. Always check the account balance 
 - User needs to bridge tokens into or out of NEAR
 - The token has a `1cs_v1:` asset ID prefix (even if on the `near` blockchain)
 
-## Complete native swap workflow
+## Complete native swap walkthrough
 
-The full flow, starting from raw NEAR:
+This is a step-by-step walkthrough with real commands. Replace `alice.near` with the actual account ID throughout.
+
+### Pre-flight checklist
+
+Before starting, verify:
+```bash
+# near-cli-rs installed
+near --version
+
+# Credentials exist locally
+ls ~/.near-credentials/mainnet/
+
+# Account exists on-chain and has NEAR
+near account view-account-summary alice.near network-config mainnet now
+```
+
+Budget check: you need the swap amount + 0.5 NEAR reserve + 0.0125 per new token + 0.01 per transaction.
+
+---
+
+### Step 1: Get a rate quote
 
 ```bash
-# 1. Wrap NEAR → wNEAR (on-chain: near_deposit on wrap.near)
-#    Also registers storage on wrap.near if first time
-
-# 2. Register storage on destination token contract (on-chain: storage_deposit)
-#    e.g., on the USDC contract — costs ~0.0125 NEAR, once per token per account
-
-# 3. Preview the rate
-near-intents quote --native --from wNEAR --to USDC --amount 10
-
-# 4. Execute the swap
-near-intents swap --native --from wNEAR --to USDC --amount 10 \
-  --recipient alice.near --refund-to alice.near --sender alice.near
-
-# 5. Execute the nearTransaction on NEAR (on-chain: ft_transfer_call)
-#    Using near-cli, NEAR SDK, or another tool
-
-# 6. Submit the transaction hash (speeds up processing)
-near-intents submit-tx --deposit-address <addr> --tx-hash <hash> --near-sender alice.near
-
-# 7. Poll status until terminal
-near-intents status --deposit-address <addr>
-
-# 8. If chaining another swap: withdraw output tokens first (on-chain: ft_withdraw on intents.near)
-#    Then repeat from step 3
+near-intents quote --native --from nep141:wrap.near --to USDC --amount 10 --pretty
 ```
+
+Verify the rate looks reasonable before committing.
+
+---
+
+### Step 2: Initiate the swap — get the deposit address
+
+```bash
+near-intents swap --native \
+  --from nep141:wrap.near --to USDC --amount 10 \
+  --recipient alice.near --refund-to alice.near --sender alice.near \
+  --pretty
+```
+
+Save the output — you need `depositAddress` and the `nearTransaction` object.
+
+---
+
+### Step 3: Register your account on wrap.near (if first time)
+
+Your account needs a storage slot on the wNEAR contract before it can hold wNEAR.
+
+```bash
+near contract call-function as-transaction wrap.near storage_deposit \
+  json-args '{"account_id":"alice.near"}' \
+  prepaid-gas '30 Tgas' attached-deposit '0.0125 NEAR' \
+  sign-as alice.near network-config mainnet sign-with-keychain send
+```
+
+*Skip if you have used wNEAR before — it's a one-time registration per account.*
+
+---
+
+### Step 4: Wrap NEAR → wNEAR
+
+```bash
+near contract call-function as-transaction wrap.near near_deposit \
+  json-args '{}' \
+  prepaid-gas '30 Tgas' attached-deposit '10 NEAR' \
+  sign-as alice.near network-config mainnet sign-with-keychain send
+```
+
+---
+
+### Step 5: Register the deposit address on wrap.near ⚠️ CRITICAL — commonly missed
+
+The deposit address returned by the swap API is a NEAR account. It also needs a storage slot on wrap.near before it can receive your wNEAR. Without this step, the ft_transfer_call in step 6 will fail with "account not registered."
+
+```bash
+near contract call-function as-transaction wrap.near storage_deposit \
+  json-args '{"account_id":"<depositAddress>"}' \
+  prepaid-gas '30 Tgas' attached-deposit '0.0125 NEAR' \
+  sign-as alice.near network-config mainnet sign-with-keychain send
+```
+
+Replace `<depositAddress>` with the exact value from the swap output.
+
+---
+
+### Step 6: Submit the ft_transfer_call
+
+Use the exact values from the `nearTransaction` in the swap response — do not modify them:
+
+```bash
+near contract call-function as-transaction wrap.near ft_transfer_call \
+  json-args '{"receiver_id":"intents.near","amount":"<amount_from_response>","msg":"<msg_from_response>"}' \
+  prepaid-gas '100 Tgas' attached-deposit '1 yoctoNEAR' \
+  sign-as alice.near network-config mainnet sign-with-keychain send
+```
+
+---
+
+### Step 7: Submit the transaction hash
+
+Parse the transaction hash from the near-cli output (look for `Transaction ID:` or the nearblocks.io URL), then:
+
+```bash
+near-intents submit-tx --deposit-address <depositAddress> --tx-hash <hash> --near-sender alice.near
+```
+
+---
+
+### Step 8: Poll for completion
+
+```bash
+near-intents status --deposit-address <depositAddress> --pretty
+```
+
+Repeat every 5–10 seconds until status is `SUCCESS`, `FAILED`, `REFUNDED`, or `INCOMPLETE_DEPOSIT`.
+
+---
+
+### Step 9: Withdraw output tokens from intents
+
+After `SUCCESS`, the output tokens are inside `intents.near`, not in your wallet yet. Withdraw them:
+
+```bash
+near contract call-function as-transaction intents.near ft_withdraw \
+  json-args '{"token":"<bare_contract_id>","amount":"<raw_amount>","receiver_id":"alice.near"}' \
+  prepaid-gas '100 Tgas' attached-deposit '1 yoctoNEAR' \
+  sign-as alice.near network-config mainnet sign-with-keychain send
+```
+
+The `token` field is the bare contract ID — strip the `nep141:` prefix:
+- `nep141:usdc.omft.near` → `"token": "usdc.omft.near"`
+- `nep141:wrap.near` → `"token": "wrap.near"`
 
 ## Chaining multiple swaps
 
