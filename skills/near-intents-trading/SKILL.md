@@ -11,7 +11,9 @@ Orchestrate crypto portfolio management and cross-chain swaps using two CLI tool
 
 ## Install
 
-If `near-intents` or `portfolio` are not installed, run:
+If `near-intents` or `portfolio` are not installed:
+
+### macOS / Linux
 
 ```
 curl -fsSL https://raw.githubusercontent.com/FlipsideCrypto/near-intents-cli/main/install.sh | sh
@@ -20,6 +22,33 @@ curl -fsSL https://raw.githubusercontent.com/FlipsideCrypto/near-intents-cli/mai
 Or with a specific version: `VERSION=v0.1.0 curl -fsSL ... | sh`
 
 Custom install dir: `INSTALL_DIR=~/.local/bin curl -fsSL ... | sh`
+
+### Windows
+
+**Option A — Git Bash / MSYS2 (recommended):**
+
+The install script works in Git Bash or MSYS2. Open Git Bash and run:
+
+```
+curl -fsSL https://raw.githubusercontent.com/FlipsideCrypto/near-intents-cli/main/install.sh | sh
+```
+
+Binaries install to `~/.local/bin`. If that's not in your PATH, add it:
+
+```
+echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc && source ~/.bashrc
+```
+
+**Option B — Manual download (PowerShell / cmd):**
+
+1. Go to the [latest release](https://github.com/FlipsideCrypto/near-intents-cli/releases/latest)
+2. Download `near-intents_<version>_windows_amd64.zip` and `portfolio_<version>_windows_amd64.zip`
+3. Extract both `.zip` files
+4. Move `near-intents.exe` and `portfolio.exe` to a directory in your PATH (e.g. `C:\Users\<you>\bin`)
+5. Add that directory to your PATH if it isn't already:
+   - Search "Environment Variables" in Start → Edit the user `Path` variable → Add the directory
+
+Verify: open a new terminal and run `near-intents --version`
 
 ## Tools
 

@@ -32,9 +32,10 @@ error()   { printf "${RED}Error:${NC} %s\n" "$1" >&2; exit 1; }
 detect_os() {
     OS=$(uname -s | tr '[:upper:]' '[:lower:]')
     case "$OS" in
-        darwin) echo "darwin" ;;
-        linux)  echo "linux" ;;
-        *)      error "Unsupported operating system: $OS" ;;
+        darwin)          echo "darwin" ;;
+        linux)           echo "linux" ;;
+        mingw*|msys*|cygwin*) echo "windows" ;;
+        *)               error "Unsupported operating system: $OS" ;;
     esac
 }
 
@@ -48,11 +49,21 @@ detect_arch() {
 }
 
 check_dependencies() {
-    for cmd in curl tar; do
+    for cmd in curl; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             error "Required command not found: $cmd"
         fi
     done
+    OS_CHECK=$(detect_os)
+    if [ "$OS_CHECK" = "windows" ]; then
+        if ! command -v unzip >/dev/null 2>&1; then
+            error "Required command not found: unzip (install via 'pacman -S unzip' in MSYS2 or Git Bash)"
+        fi
+    else
+        if ! command -v tar >/dev/null 2>&1; then
+            error "Required command not found: tar"
+        fi
+    fi
 }
 
 get_latest_version() {
@@ -106,7 +117,16 @@ download_and_install() {
     INSTALL_DIR="$6"
 
     VERSION_NUM="${VERSION#v}"
-    ARCHIVE="${TOOL}_${VERSION_NUM}_${OS}_${ARCH}.tar.gz"
+
+    # Windows uses .zip archives and .exe binaries
+    if [ "$OS" = "windows" ]; then
+        ARCHIVE="${TOOL}_${VERSION_NUM}_${OS}_${ARCH}.zip"
+        BINARY="${TOOL}.exe"
+    else
+        ARCHIVE="${TOOL}_${VERSION_NUM}_${OS}_${ARCH}.tar.gz"
+        BINARY="${TOOL}"
+    fi
+
     URL="${GITHUB_DOWNLOAD}/${VERSION}/${ARCHIVE}"
     CHECKSUM_URL="${GITHUB_DOWNLOAD}/${VERSION}/checksums.txt"
 
@@ -133,20 +153,25 @@ download_and_install() {
         warn "Could not fetch checksums — skipping verification"
     fi
 
-    tar -xzf "${TMPDIR}/${ARCHIVE}" -C "${TMPDIR}"
+    # Extract archive
+    if [ "$OS" = "windows" ]; then
+        unzip -qo "${TMPDIR}/${ARCHIVE}" -d "${TMPDIR}"
+    else
+        tar -xzf "${TMPDIR}/${ARCHIVE}" -C "${TMPDIR}"
+    fi
 
-    if [ ! -f "${TMPDIR}/${TOOL}" ]; then
+    if [ ! -f "${TMPDIR}/${BINARY}" ]; then
         error "Binary not found after extraction"
     fi
 
-    chmod +x "${TMPDIR}/${TOOL}"
+    chmod +x "${TMPDIR}/${BINARY}"
 
     if [ ! -w "$INSTALL_DIR" ]; then
         error "Cannot write to ${INSTALL_DIR}. Set INSTALL_DIR to a writable path."
     fi
 
-    mv "${TMPDIR}/${TOOL}" "${INSTALL_DIR}/${TOOL}"
-    success "Installed ${TOOL} to ${INSTALL_DIR}/${TOOL}"
+    mv "${TMPDIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+    success "Installed ${TOOL} to ${INSTALL_DIR}/${BINARY}"
 }
 
 main() {
